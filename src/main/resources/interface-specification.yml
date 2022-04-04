@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Interoperability Authorization Server Micro Service
-  description: exposes the to request an interoperability token
+  description: Provides endpoints to request an interoperability token
   version: '0.1.0'
   contact:
     name: API Support
@@ -11,8 +11,8 @@ info:
   x-api-id: an x-api-id
   x-summary: an x-summary
 servers:
-  - url: '/authorization-server'
-    description: This service is the interoperability Authorization Server
+  - url: '/authorization-server/{{version}}'
+    description: Interoperability Authorization Server
 tags:
   - name: auth
     description: Get security information
@@ -68,8 +68,7 @@ paths:
   /status:
     get:
       summary: Returns the application status
-      description: |
-        Returns the application status. For testing purposes, it might randomly reply with an error.
+      description: Returns the application status
       operationId: get_status
       tags:
         - health
@@ -97,7 +96,7 @@ components:
           format: jws
         client_assertion_type:
           type: string
-          example: urn%3Aietf%3Aparams%3Aoauth%3Aclient-assertion-type%3Ajwt-bearer
+          example: urn:ietf:params:oauth:client-assertion-type:jwt-bearer
         grant_type:
           type: string
           enum:
