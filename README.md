@@ -1,1 +1,1 @@
-# Interoperability - API gateway
+# Interoperability - Authorization Server
