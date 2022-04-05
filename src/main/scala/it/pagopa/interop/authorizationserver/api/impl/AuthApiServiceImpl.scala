@@ -55,11 +55,6 @@ final case class AuthApiServiceImpl(
     toEntityMarshallerClientCredentialsResponse: ToEntityMarshaller[ClientCredentialsResponse],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
-    val correlationId: String                               = UUID.randomUUID().toString
-    // TODO Verify an alternative using directives
-    implicit val overriddenContexts: List[(String, String)] =
-      (contexts :+ (CORRELATION_ID_HEADER -> correlationId)).toList
-
     val tokenAndChecker: Try[(String, ClientAssertionChecker)] = for {
       m2mToken               <- interopTokenGenerator.generateInternalToken(
         jwtAlgorithmType = RSA,
@@ -80,7 +75,7 @@ final case class AuthApiServiceImpl(
 
     val result: Future[ClientCredentialsResponse] = for {
       (m2mToken, checker) <- tokenAndChecker.toFuture
-      m2mContexts = Seq(CORRELATION_ID_HEADER -> correlationId, BEARER -> m2mToken)
+      m2mContexts = contexts.filter(_._1 == CORRELATION_ID_HEADER) :+ (BEARER -> m2mToken)
       clientUUID                <- checker.subject.toFutureUUID
       publicKey                 <- authorizationManagementService
         .getKey(clientUUID, checker.kid)(m2mContexts)
