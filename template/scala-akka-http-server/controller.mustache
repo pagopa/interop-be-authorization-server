@@ -24,10 +24,9 @@ import com.typesafe.config.{Config, ConfigFactory}
 import scala.collection.mutable
 
 class Controller({{#apiInfo}}{{#apis}}{{#operations}}{{classVarName}}: {{classname}}{{^-last}}, {{/-last}}{{/operations}}{{/apis}}{{/apiInfo}}, validationExceptionToRoute: Option[ValidationReport => Route] = None)(implicit system: ActorSystem) {
-val interfaceVersion = buildinfo.BuildInfo.interfaceVersion
 private val mf = new DefaultMustacheFactory
 val writer =
-mf.compile("interface-specification.yml").execute(new StringWriter(), mutable.HashMap("version" -> interfaceVersion).asJava).asInstanceOf[StringWriter]
+mf.compile("interface-specification.yml").execute(new StringWriter(), mutable.HashMap().asJava).asInstanceOf[StringWriter]
 writer.flush()
 writer.close()
 private val tmpFile = File.createTempFile("tmp", "interface-specification.yml")
@@ -39,7 +38,7 @@ w.close()
 private val validator: OpenApiInteractionValidator =
    OpenApiInteractionValidator
    .createForSpecificationUrl(tmpFile.getPath)
-   .withBasePathOverride(s"{{projectName}}/${interfaceVersion}")
+   //.withBasePathOverride(s"{{projectName}}")
    .build
 
 private val strictnessTimeout = FiniteDuration({{entityStrictnessTimeout}}, SECONDS)
@@ -106,11 +105,11 @@ complete(HttpEntity(ContentTypes.`application/json`, buildinfo.BuildInfo.toJson)
 }
 
 def swaggerRoute: Route =
-    pathPrefix("{{projectName}}" / interfaceVersion / "swagger") {
+    pathPrefix("{{projectName}}" / "swagger") {
       getFromResourceDirectory("swagger-ui") ~ getFromFile(tmpFile)
     }
 
-lazy val routes: Route = getBuildInfo ~ swaggerRoute ~ pathPrefix("{{projectName}}" / interfaceVersion) {
+lazy val routes: Route = getBuildInfo ~ swaggerRoute ~ pathPrefix("{{projectName}}") {
 toStrictEntity(strictnessTimeout) {
 extractRequest {
 request =>
