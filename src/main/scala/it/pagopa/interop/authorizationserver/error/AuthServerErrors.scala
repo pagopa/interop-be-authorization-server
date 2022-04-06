@@ -14,21 +14,14 @@ object AuthServerErrors {
 
   final case class InactiveClient(clientId: UUID, errorMessages: List[String])
       extends ComponentError("0004", s"Client $clientId is inactive: ${errorMessages.mkString(", ")}")
+  final case class InactivePurpose(state: String)   extends ComponentError("0005", s"Purpose is in state $state")
+  final case class InactiveEService(state: String)  extends ComponentError("0006", s"E-Service is in state $state")
+  final case class InactiveAgreement(state: String) extends ComponentError("0007", s"Agreement is in state $state")
 
-  final case class CreateTokenRequestError(error: String)
-      extends ComponentError("0005", s"Error while creating a token for this request - $error")
-
-  final case class MissingActivePurposeVersion(purposeId: UUID)
-      extends ComponentError("0006", s"There is no active version for purpose $purposeId")
-
-  final case class MissingActivePurposesVersions(purposesIds: Seq[UUID])
-      extends ComponentError("0007", s"There is no active version for purposes ${purposesIds.mkString(", ")}")
+  final object CreateTokenRequestError
+      extends ComponentError("0008", s"A token cannot be generated for the given request")
 
   final case object PurposeIdNotProvided
-      extends ComponentError("0008", "purposeId claim does not exist in this assertion")
-
-  final case class InactivePurpose(state: String)   extends ComponentError("0009", s"Purpose is in state $state")
-  final case class InactiveEservice(state: String)  extends ComponentError("0010", s"E-Service is in state $state")
-  final case class InactiveAgreement(state: String) extends ComponentError("0011", s"Agreement is in state $state")
+      extends ComponentError("0009", "purposeId claim does not exist in this assertion")
 
 }

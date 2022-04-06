@@ -96,19 +96,13 @@ final case class AuthApiServiceImpl(
     } yield ClientCredentialsResponse(access_token = token, token_type = Bearer, expires_in = tokenDuration)
 
     onComplete(result) {
-      case Success(token)               => createToken200(token)
-      case Failure(ex: PurposeNotFound) =>
-        logger.error(s"Purpose not found for this client - ${ex.getMessage}")
-        createToken400(problemOf(StatusCodes.BadRequest, ex))
-      case Failure(ex: InactiveClient)  =>
-        logger.error(s"The client performing this request is not active - ${ex.getMessage}")
-        createToken400(problemOf(StatusCodes.BadRequest, ex))
-      case Failure(ex)                  =>
+      case Success(token)              => createToken200(token)
+      case Failure(ex: ComponentError) =>
+        logger.error(s"Error while creating a token - ${ex.getMessage}")
+        createToken400(problemOf(StatusCodes.BadRequest, CreateTokenRequestError))
+      case Failure(ex)                 =>
         logger.error(s"Error while creating a token for this request - ${ex.getMessage}")
-        complete(
-          StatusCodes.InternalServerError,
-          problemOf(StatusCodes.InternalServerError, CreateTokenRequestError(ex.getMessage))
-        )
+        complete(StatusCodes.InternalServerError, problemOf(StatusCodes.InternalServerError, CreateTokenRequestError))
     }
   }
 
@@ -125,7 +119,7 @@ final case class AuthApiServiceImpl(
         : Validated[NonEmptyList[ComponentError], (ClientComponentState, ClientComponentState, ClientComponentState)] =
         (
           validate(statesChain.purpose.state, InactivePurpose(statesChain.purpose.state.toString)),
-          validate(statesChain.eservice.state, InactiveEservice(statesChain.eservice.state.toString)),
+          validate(statesChain.eservice.state, InactiveEService(statesChain.eservice.state.toString)),
           validate(statesChain.agreement.state, InactiveAgreement(statesChain.agreement.state.toString))
         ).tupled
 
