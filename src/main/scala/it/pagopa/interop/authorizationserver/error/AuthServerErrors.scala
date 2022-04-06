@@ -19,9 +19,14 @@ object AuthServerErrors {
   final case class InactiveAgreement(state: String) extends ComponentError("0007", s"Agreement is in state $state")
 
   final object CreateTokenRequestError
-      extends ComponentError("0008", s"A token cannot be generated for the given request")
+      extends ComponentError("0008", s"Unable to generate a token for the given request")
 
   final case object PurposeIdNotProvided
-      extends ComponentError("0009", "purposeId claim does not exist in this assertion")
+      extends ComponentError("0009", "Claim purposeId does not exist in this assertion")
 
+  final case class InvalidAssertion(message: String)
+      extends ComponentError("0010", s"Invalid client assertion. Reasons: $message")
+
+  final case class KeyNotFound(message: String)
+      extends ComponentError("0011", s"Key not found in client. Reasons: $message")
 }

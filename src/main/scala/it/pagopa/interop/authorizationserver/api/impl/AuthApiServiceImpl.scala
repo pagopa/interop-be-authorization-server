@@ -20,6 +20,7 @@ import it.pagopa.interop.authorizationmanagement.client.model.{
   ClientKind,
   ClientStatesChain
 }
+import it.pagopa.interop.commons.jwt.errors.InvalidAccessTokenRequest
 import it.pagopa.interop.commons.jwt.model.{ClientAssertionChecker, RSA, ValidClientAssertionRequest}
 import it.pagopa.interop.commons.jwt.service.{ClientAssertionValidator, InteropTokenGenerator}
 import it.pagopa.interop.commons.jwt.{JWTConfiguration, JWTInternalTokenConfig}
@@ -28,6 +29,7 @@ import it.pagopa.interop.commons.utils.TypeConversions._
 import it.pagopa.interop.commons.utils.errors.ComponentError
 import it.pagopa.interop.commons.utils.{BEARER, CORRELATION_ID_HEADER}
 import org.slf4j.LoggerFactory
+import it.pagopa.interop.authorizationmanagement.client.invoker.{ApiError => AuthorizationApiError}
 
 import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
@@ -64,13 +66,12 @@ final case class AuthApiServiceImpl(
         secondsDuration = jwtConfig.durationInSeconds
       )
       clientUUID             <- clientId.traverse(_.toUUID)
-      clientAssertionRequest <- ValidClientAssertionRequest.from(
-        clientAssertion,
-        clientAssertionType,
-        grantType,
-        clientUUID
-      )
-      checker                <- jwtValidator.extractJwtInfo(clientAssertionRequest)
+      clientAssertionRequest <- ValidClientAssertionRequest
+        .from(clientAssertion, clientAssertionType, grantType, clientUUID)
+        .recoverWith { case err: InvalidAccessTokenRequest => Failure(InvalidAssertion(err.errors.mkString(","))) }
+      checker                <- jwtValidator
+        .extractJwtInfo(clientAssertionRequest)
+        .recoverWith { case err => Failure(InvalidAssertion(err.getMessage)) }
     } yield (m2mToken, checker)
 
     val result: Future[ClientCredentialsResponse] = for {
@@ -80,6 +81,9 @@ final case class AuthApiServiceImpl(
       publicKey                 <- authorizationManagementService
         .getKey(clientUUID, checker.kid)(m2mContexts)
         .map(k => AuthorizationManagementInvoker.serializeKey(k.key))
+        .recoverWith {
+          case err: AuthorizationApiError[_] if err.code == 404 => Future.failed(KeyNotFound(err.getMessage))
+        }
       _                         <- checker.verify(publicKey).toFuture
       purposeId                 <- checker.purposeId.traverse(_.toFutureUUID)
       client                    <- authorizationManagementService.getClient(clientUUID)(m2mContexts)

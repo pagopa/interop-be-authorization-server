@@ -38,7 +38,7 @@ w.close()
 private val validator: OpenApiInteractionValidator =
    OpenApiInteractionValidator
    .createForSpecificationUrl(tmpFile.getPath)
-   //.withBasePathOverride(s"{{projectName}}")
+   .withBasePathOverride(s"{{projectName}}")
    .build
 
 private val strictnessTimeout = FiniteDuration({{entityStrictnessTimeout}}, SECONDS)
