@@ -17,10 +17,10 @@ object Dependencies {
     lazy val management    = "com.lightbend.akka.management" %% "akka-management"            % akkaManagementVersion
     lazy val managementLogLevels =
       "com.lightbend.akka.management" %% "akka-management-loglevels-logback" % akkaManagementVersion
-    lazy val slf4j         = namespace %% "akka-slf4j"          % akkaVersion
-    lazy val httpTestkit   = namespace %% "akka-http-testkit"   % akkaHttpVersion
-    lazy val streamTestkit = namespace %% "akka-stream-testkit" % akkaVersion
-    lazy val testkit       = namespace %% "akka-testkit"        % akkaVersion
+    lazy val slf4j         = namespace %% "akka-slf4j"               % akkaVersion
+    lazy val httpTestkit   = namespace %% "akka-http-testkit"        % akkaHttpVersion
+    lazy val streamTestkit = namespace %% "akka-stream-testkit"      % akkaVersion
+    lazy val testkit       = namespace %% "akka-actor-testkit-typed" % akkaVersion
 
   }
 
