@@ -37,7 +37,6 @@ pipeline {
     MAVEN_REPO = "${env.MAVEN_REPO}"
     GITHUB_PAT = credentials('github-pat')
     NEXUS_CREDENTIALS = credentials('pdnd-nexus')
-    ECR_RW = credentials('ecr-rw')
     // GIT_URL has the shape git@github.com:pagopa/REPO_NAME.git so we extract from it
     REPO_NAME="""${sh(returnStdout:true, script: 'echo ${GIT_URL} | sed "s_git@github\\.com:pagopa/\\(.*\\)\\.git_\\1_g"')}""".trim()
   }
