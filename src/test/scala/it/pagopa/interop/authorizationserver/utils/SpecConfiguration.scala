@@ -7,9 +7,7 @@ trait SpecConfiguration {
   val config: Config = ConfigFactory
     .parseResourcesAnySyntax("application-test")
 
-  val servicePort: Int = config.getInt("authorization-server.port")
-
-  val jwtQueueUrl: String = config.getString("interop-authorization-server.jwt-queue-url")
+  val servicePort: Int = config.getInt("interop-authorization-server.port")
 }
 
 object SpecConfiguration extends SpecConfiguration

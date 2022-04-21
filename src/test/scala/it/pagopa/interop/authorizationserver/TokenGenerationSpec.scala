@@ -1,63 +1,23 @@
 package it.pagopa.interop.authorizationserver
 
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
-import it.pagopa.interop.authorizationmanagement.client.model.{
-  Client,
-  ClientAgreementDetails,
-  ClientComponentState,
-  ClientEServiceDetails,
-  ClientKey,
-  ClientKind,
-  ClientPurposeDetails,
-  ClientStatesChain,
-  Key,
-  Purpose
-}
-import it.pagopa.interop.authorizationserver.api.AuthApiService
+import it.pagopa.interop.authorizationmanagement.client.model._
 import it.pagopa.interop.authorizationserver.api.impl.AuthApiMarshallerImpl._
-import it.pagopa.interop.authorizationserver.api.impl.{AuthApiServiceImpl, _}
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
 import it.pagopa.interop.authorizationserver.model.{ClientCredentialsResponse, JWTDetailsMessage, TokenType}
-import it.pagopa.interop.authorizationserver.service.{AuthorizationManagementService, QueueService}
+import it.pagopa.interop.authorizationserver.utils.BaseSpec
 import it.pagopa.interop.commons.jwt.model.{ClientAssertionChecker, RSA, Token, ValidClientAssertionRequest}
-import it.pagopa.interop.commons.jwt.service.{ClientAssertionValidator, InteropTokenGenerator}
 import it.pagopa.interop.commons.utils.PURPOSE_ID_CLAIM
 import org.mockito.MockitoSugar._
-import org.mockito.scalatest.IdiomaticMockito
 import org.scalatest.matchers.should.Matchers._
-import org.scalatest.wordspec.AnyWordSpecLike
-import spray.json.DefaultJsonProtocol
 
 import java.time.OffsetDateTime
 import java.util.UUID
 import scala.concurrent.Future
 import scala.util.Success
 
-class TokenGenerationSpec
-//    extends BaseSpec
-    extends AnyWordSpecLike
-    with SprayJsonSupport
-    with DefaultJsonProtocol
-    with IdiomaticMockito
-    with ScalatestRouteTest {
-
-  val mockClientAssertionValidator: ClientAssertionValidator             = mock[ClientAssertionValidator]
-  val mockInteropTokenGenerator: InteropTokenGenerator                   = mock[InteropTokenGenerator]
-  val mockAuthorizationManagementService: AuthorizationManagementService = mock[AuthorizationManagementService]
-  val mockQueueService: QueueService                                     = mock[QueueService]
-
-  val service: AuthApiService = AuthApiServiceImpl(
-    authorizationManagementService = mockAuthorizationManagementService,
-    jwtValidator = mockClientAssertionValidator,
-    interopTokenGenerator = mockInteropTokenGenerator,
-    queueService = mockQueueService
-  )
-
-  implicit def fromResponseUnmarshallerPurpose: FromEntityUnmarshaller[ClientCredentialsResponse] =
-    sprayJsonUnmarshaller[ClientCredentialsResponse]
+class TokenGenerationSpec extends BaseSpec with ScalatestRouteTest {
 
 //  val jwtConfig: JWTInternalTokenConfig = ???
   val internalToken: Token = Token(serialized = "internal-jwt", jti = "internal-jti", iat = 0, exp = 100, nbf = 0)
@@ -147,10 +107,6 @@ class TokenGenerationSpec
       )
         .thenReturn(Success(internalToken))
 
-      //      mockInteropTokenGenerator
-//        .generateInternalToken(RSA, *[String], *[List[String]], *[String], *[Long])
-//        .returns(Success(internalToken))
-
       mockClientAssertionValidator
         .extractJwtInfo(*[ValidClientAssertionRequest])
         .returns(Success(clientAssertionChecker))
@@ -170,10 +126,6 @@ class TokenGenerationSpec
           .getKey(eqTo(clientId), eqTo(kid))(*[Seq[(String, String)]])
       )
         .thenReturn(Future.successful(clientKey))
-
-//      verify(mockAuthorizationManagementService)
-//        .getKey(eqTo(clientId), eqTo(kid))(*[Seq[(String, String)]])
-//        .returns(Future.successful(clientKey))
 
       when(clientAssertionChecker.verify(*[String])).thenReturn(Success(()))
 

@@ -2,10 +2,9 @@ package it.pagopa.interop.authorizationserver
 
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest, StatusCodes}
-import it.pagopa.interop.authorizationserver.utils.{BaseSpec, SpecConfiguration}
-import org.scalatest.wordspec.AnyWordSpecLike
+import it.pagopa.interop.authorizationserver.utils.{BaseRunningServerSpec, SpecConfiguration}
 
-class ApplicationUrlSpec extends BaseSpec with AnyWordSpecLike {
+class ApplicationUrlSpec extends BaseRunningServerSpec {
 
   "the application url" should {
     "not contain the interface version" in {
