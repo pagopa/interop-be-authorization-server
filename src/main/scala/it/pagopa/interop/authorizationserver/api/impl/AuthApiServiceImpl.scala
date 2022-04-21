@@ -13,7 +13,11 @@ import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
 import it.pagopa.interop.authorizationserver.error.AuthServerErrors._
 import it.pagopa.interop.authorizationserver.model.TokenType.Bearer
 import it.pagopa.interop.authorizationserver.model.{ClientCredentialsResponse, JWTDetailsMessage, Problem}
-import it.pagopa.interop.authorizationserver.service.{AuthorizationManagementInvoker, AuthorizationManagementService}
+import it.pagopa.interop.authorizationserver.service.{
+  AuthorizationManagementInvoker,
+  AuthorizationManagementService,
+  QueueService
+}
 import it.pagopa.interop.authorizationmanagement.client.model.{
   Client,
   ClientComponentState,
@@ -30,7 +34,6 @@ import it.pagopa.interop.commons.utils.errors.ComponentError
 import it.pagopa.interop.commons.utils.{BEARER, CORRELATION_ID_HEADER, ORGANIZATION_ID_CLAIM, PURPOSE_ID_CLAIM}
 import org.slf4j.LoggerFactory
 import it.pagopa.interop.authorizationmanagement.client.invoker.{ApiError => AuthorizationApiError}
-import it.pagopa.interop.commons.queue.impl.SQSSimpleWriter
 
 import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
@@ -40,7 +43,7 @@ final case class AuthApiServiceImpl(
   authorizationManagementService: AuthorizationManagementService,
   jwtValidator: ClientAssertionValidator,
   interopTokenGenerator: InteropTokenGenerator,
-  sqsWriter: SQSSimpleWriter
+  queueService: QueueService
 )(implicit ec: ExecutionContext)
     extends AuthApiService {
 
@@ -173,7 +176,7 @@ final case class AuthApiServiceImpl(
       kid = kid
     )
 
-    sqsWriter
+    queueService
       .send(jwtDetails)
       .as(())
       .recoverWith(ex =>

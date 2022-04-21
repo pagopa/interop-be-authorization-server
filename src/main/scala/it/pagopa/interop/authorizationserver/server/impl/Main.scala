@@ -33,7 +33,6 @@ import it.pagopa.interop.commons.jwt.service.impl.{
 }
 import it.pagopa.interop.commons.jwt.service.{ClientAssertionValidator, InteropTokenGenerator}
 import it.pagopa.interop.commons.queue.QueueConfiguration
-import it.pagopa.interop.commons.queue.impl.SQSSimpleWriter
 import it.pagopa.interop.commons.utils.AkkaUtils.PassThroughAuthenticator
 import it.pagopa.interop.commons.utils.TypeConversions.TryOps
 import it.pagopa.interop.commons.utils.errors.GenericComponentErrors.ValidationRequestError
@@ -102,10 +101,10 @@ object Main extends App with CORSSupport with VaultServiceDependency with Author
       AkkaManagement.get(classicActorSystem).start()
     }
 
-    val sqsWriter = SQSSimpleWriter(QueueConfiguration.queueAccountInfo, ApplicationConfiguration.jwtQueueUrl)
+    val queueService = QueueServiceImpl(QueueConfiguration.queueAccountInfo, ApplicationConfiguration.jwtQueueUrl)
 
     val authApiService: AuthApiService       =
-      AuthApiServiceImpl(authorizationManagementService, clientAssertionValidator, interopTokenGenerator, sqsWriter)
+      AuthApiServiceImpl(authorizationManagementService, clientAssertionValidator, interopTokenGenerator, queueService)
     val authApiMarshaller: AuthApiMarshaller = AuthApiMarshallerImpl
 
     val authApi: AuthApi = new AuthApi(
