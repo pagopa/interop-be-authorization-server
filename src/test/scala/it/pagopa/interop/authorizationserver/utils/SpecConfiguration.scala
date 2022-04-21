@@ -4,8 +4,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 
 trait SpecConfiguration {
 
-  val config: Config = ConfigFactory
-    .parseResourcesAnySyntax("application-test")
+  val config: Config = ConfigFactory.parseResourcesAnySyntax("application-test")
 
   val servicePort: Int = config.getInt("interop-authorization-server.port")
 }
