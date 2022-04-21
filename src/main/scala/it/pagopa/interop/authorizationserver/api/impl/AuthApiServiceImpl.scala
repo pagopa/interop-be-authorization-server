@@ -12,7 +12,7 @@ import it.pagopa.interop.authorizationserver.api.AuthApiService
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
 import it.pagopa.interop.authorizationserver.error.AuthServerErrors._
 import it.pagopa.interop.authorizationserver.model.TokenType.Bearer
-import it.pagopa.interop.authorizationserver.model.{ClientCredentialsResponse, Problem}
+import it.pagopa.interop.authorizationserver.model.{ClientCredentialsResponse, JWTDetailsMessage, Problem}
 import it.pagopa.interop.authorizationserver.service.{AuthorizationManagementInvoker, AuthorizationManagementService}
 import it.pagopa.interop.authorizationmanagement.client.model.{
   Client,
@@ -21,15 +21,16 @@ import it.pagopa.interop.authorizationmanagement.client.model.{
   ClientStatesChain
 }
 import it.pagopa.interop.commons.jwt.errors.InvalidAccessTokenRequest
-import it.pagopa.interop.commons.jwt.model.{ClientAssertionChecker, RSA, ValidClientAssertionRequest}
+import it.pagopa.interop.commons.jwt.model.{ClientAssertionChecker, RSA, Token, ValidClientAssertionRequest}
 import it.pagopa.interop.commons.jwt.service.{ClientAssertionValidator, InteropTokenGenerator}
 import it.pagopa.interop.commons.jwt.{JWTConfiguration, JWTInternalTokenConfig}
 import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
 import it.pagopa.interop.commons.utils.TypeConversions._
 import it.pagopa.interop.commons.utils.errors.ComponentError
-import it.pagopa.interop.commons.utils.{BEARER, CORRELATION_ID_HEADER, PURPOSE_ID_CLAIM, ORGANIZATION_ID_CLAIM}
+import it.pagopa.interop.commons.utils.{BEARER, CORRELATION_ID_HEADER, ORGANIZATION_ID_CLAIM, PURPOSE_ID_CLAIM}
 import org.slf4j.LoggerFactory
 import it.pagopa.interop.authorizationmanagement.client.invoker.{ApiError => AuthorizationApiError}
+import it.pagopa.interop.commons.queue.impl.SQSSimpleWriter
 
 import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
@@ -38,7 +39,8 @@ import scala.util.{Failure, Success, Try}
 final case class AuthApiServiceImpl(
   authorizationManagementService: AuthorizationManagementService,
   jwtValidator: ClientAssertionValidator,
-  interopTokenGenerator: InteropTokenGenerator
+  interopTokenGenerator: InteropTokenGenerator,
+  sqsWriter: SQSSimpleWriter
 )(implicit ec: ExecutionContext)
     extends AuthApiService {
 
@@ -72,14 +74,15 @@ final case class AuthApiServiceImpl(
       checker                <- jwtValidator
         .extractJwtInfo(clientAssertionRequest)
         .recoverWith { case err => Failure(InvalidAssertion(err.getMessage)) }
-    } yield (m2mToken, checker)
+    } yield (m2mToken.serialized, checker)
 
     val result: Future[ClientCredentialsResponse] = for {
       (m2mToken, checker) <- tokenAndChecker.toFuture
       m2mContexts = contexts.filter(_._1 == CORRELATION_ID_HEADER) :+ (BEARER -> m2mToken)
+      kid         = checker.kid
       clientUUID                <- checker.subject.toFutureUUID
       publicKey                 <- authorizationManagementService
-        .getKey(clientUUID, checker.kid)(m2mContexts)
+        .getKey(clientUUID, kid)(m2mContexts)
         .map(k => AuthorizationManagementInvoker.serializeKey(k.key))
         .recoverWith {
           case err: AuthorizationApiError[_] if err.code == 404 => Future.failed(KeyNotFound(err.getMessage))
@@ -98,7 +101,8 @@ final case class AuthApiServiceImpl(
           validityDurationInSeconds = tokenDuration.toLong
         )
         .toFuture
-    } yield ClientCredentialsResponse(access_token = token, token_type = Bearer, expires_in = tokenDuration)
+      _                         <- sendToQueue(token, clientUUID, purposeId, kid)
+    } yield ClientCredentialsResponse(access_token = token.serialized, token_type = Bearer, expires_in = tokenDuration)
 
     onComplete(result) {
       case Success(token)              => createToken200(token)
@@ -156,5 +160,27 @@ final case class AuthApiServiceImpl(
       case ClientKind.CONSUMER => purposeId.toFuture(PurposeIdNotProvided).map(p => Map(PURPOSE_ID_CLAIM -> p.toString))
       case ClientKind.API      => Future.successful(Map(ORGANIZATION_ID_CLAIM -> client.consumerId.toString))
     }
+
+  private def sendToQueue(token: Token, clientId: UUID, purposeId: Option[UUID], kid: String)(implicit
+    contexts: Seq[(String, String)]
+  ): Future[Unit] = {
+    val jwtDetails = JWTDetailsMessage(
+      jti = token.jti,
+      iat = token.iat,
+      exp = token.exp,
+      clientId = clientId.toString,
+      purposeId = purposeId.map(_.toString),
+      kid = kid
+    )
+
+    sqsWriter
+      .send(jwtDetails)
+      .as(())
+      .recoverWith(ex =>
+        Future.successful(
+          logger.error(s"Unable to save JWT details to queue. Details: $jwtDetails Reason: ${ex.getMessage}")
+        )
+      )
+  }
 
 }

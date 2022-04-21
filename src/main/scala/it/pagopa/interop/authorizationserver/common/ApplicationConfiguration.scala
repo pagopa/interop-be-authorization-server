@@ -21,6 +21,8 @@ object ApplicationConfiguration {
   lazy val clientAssertionAudience: Set[String] =
     config.getString("interop-authorization-server.client-assertion-audience").split(",").toSet.filter(_.nonEmpty)
 
+  val jwtQueueUrl: String = config.getString("interop-authorization-server.jwt-queue-url")
+
   require(generatedM2mJwtAudience.nonEmpty, "Generated JWT Audience cannot be empty")
   require(clientAssertionAudience.nonEmpty, "Client Assertion Audience cannot be empty")
 }

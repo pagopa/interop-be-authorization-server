@@ -1,4 +1,5 @@
-package it.pagopa.interop.authorizationserver
+package it.pagopa.interop.authorizationserver.utils
+
 import com.typesafe.config.{Config, ConfigFactory}
 
 trait SpecConfiguration {
@@ -6,7 +7,9 @@ trait SpecConfiguration {
   val config: Config = ConfigFactory
     .parseResourcesAnySyntax("application-test")
 
-  def servicePort: Int = config.getInt("authorization-server.port")
+  val servicePort: Int = config.getInt("authorization-server.port")
+
+  val jwtQueueUrl: String = config.getString("interop-authorization-server.jwt-queue-url")
 }
 
 object SpecConfiguration extends SpecConfiguration
