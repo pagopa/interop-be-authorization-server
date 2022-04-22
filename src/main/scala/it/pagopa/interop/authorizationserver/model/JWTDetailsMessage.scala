@@ -7,12 +7,14 @@ final case class JWTDetailsMessage(
   jti: String,
   iat: Long,
   exp: Long,
+  nbf: Long,
+  organizationId: String,
   clientId: String,
   purposeId: Option[String],
   kid: String
 ) {
   val readableString: String =
-    s"jti: $jti / iat: $iat / exp: $exp / clientId: $clientId / kid: $kid / purposeId: $purposeId"
+    s"jti: $jti / iat: $iat / exp: $exp / nbf: $nbf / organizationId: $organizationId / clientId: $clientId / kid: $kid / purposeId: $purposeId"
 }
 
 object JWTDetailsMessage {

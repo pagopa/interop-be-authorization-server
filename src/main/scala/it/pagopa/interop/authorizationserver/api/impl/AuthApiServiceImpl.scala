@@ -107,7 +107,7 @@ final case class AuthApiServiceImpl(
           validityDurationInSeconds = tokenDuration.toLong
         )
         .toFuture
-      _                         <- sendToQueue(token, clientUUID, purposeId, kid)
+      _                         <- sendToQueue(token, client, purposeId, kid)
     } yield ClientCredentialsResponse(access_token = token.serialized, token_type = Bearer, expires_in = tokenDuration)
 
     onComplete(result) {
@@ -167,14 +167,16 @@ final case class AuthApiServiceImpl(
       case ClientKind.API      => Future.successful(Map(ORGANIZATION_ID_CLAIM -> client.consumerId.toString))
     }
 
-  private def sendToQueue(token: Token, clientId: UUID, purposeId: Option[UUID], kid: String)(implicit
+  private def sendToQueue(token: Token, client: Client, purposeId: Option[UUID], kid: String)(implicit
     contexts: Seq[(String, String)]
   ): Future[Unit] = {
     val jwtDetails = JWTDetailsMessage(
       jti = token.jti,
       iat = token.iat,
       exp = token.exp,
-      clientId = clientId.toString,
+      nbf = token.nbf,
+      organizationId = client.consumerId.toString,
+      clientId = client.id.toString,
       purposeId = purposeId.map(_.toString),
       kid = kid
     )

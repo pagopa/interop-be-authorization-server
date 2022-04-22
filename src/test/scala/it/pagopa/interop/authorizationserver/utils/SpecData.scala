@@ -107,6 +107,8 @@ object SpecData {
     jti = generatedToken.jti,
     iat = generatedToken.iat,
     exp = generatedToken.exp,
+    nbf = generatedToken.nbf,
+    organizationId = consumerId.toString,
     clientId = clientId.toString,
     purposeId = Some(purposeId.toString),
     kid = kid
