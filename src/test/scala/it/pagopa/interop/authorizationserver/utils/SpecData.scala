@@ -17,7 +17,9 @@ object SpecData {
   val clientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
   val grantType           = "client_credentials"
 
-  // Do not change these values
+  // These values have been used to generate test tokens.
+  //   Any change to them would probably require to re-generate tokens and keys.
+  //   Do not change these values if you are not sure
   val clientId: UUID       = UUID.fromString("3da2c955-fcae-457f-926f-6dc41b8f95a9")
   val purposeId: UUID      = UUID.fromString("b540a415-f65d-4270-9bad-7b789d124176")
   val kid                  = "Kd3WRADi5yjC5y7Ux73Lnk9cvsL5hMHplUuq5yKsBMg"

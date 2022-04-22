@@ -50,7 +50,7 @@ trait SpecHelper { self: BaseSpec =>
         Map(PURPOSE_ID_CLAIM -> purposeId.toString),
         ApplicationConfiguration.interopIdIssuer,
         eServiceTokenDuration.toLong
-      ) // TODO This could be an Int
+      )
       .once()
       .returns(Success(generatedToken))
 
@@ -62,7 +62,7 @@ trait SpecHelper { self: BaseSpec =>
         List(interopAudience),
         Map(ORGANIZATION_ID_CLAIM -> consumerId.toString),
         ApplicationConfiguration.interopIdIssuer,
-        ApplicationConfiguration.interopTokenDuration.toLong // TODO This could be an Int
+        ApplicationConfiguration.interopTokenDuration.toLong
       )
       .once()
       .returns(Success(generatedToken))
