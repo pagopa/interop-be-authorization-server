@@ -58,10 +58,6 @@ object Dependencies {
     lazy val prometheus = namespace %% "kamon-prometheus" % kamonVersion
   }
 
-  private[this] object mockito {
-    lazy val scalatest = "org.mockito" % "mockito-scala-scalatest_2.13" % mockitoVersion
-  }
-
   private[this] object mustache {
     lazy val mustache = "com.github.spullara.mustache.java" % "compiler" % mustacheVersion
   }
@@ -119,7 +115,6 @@ object Dependencies {
       akka.httpTestkit               % Test,
       akka.streamTestkit             % Test,
       akka.testkit                   % Test,
-      mockito.scalatest              % Test,
       scalatest.core                 % Test,
       scalamock.core                 % Test
     )

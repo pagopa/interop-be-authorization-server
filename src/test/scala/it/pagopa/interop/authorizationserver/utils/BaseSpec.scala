@@ -11,13 +11,13 @@ import it.pagopa.interop.authorizationserver.service.{AuthorizationManagementSer
 import it.pagopa.interop.commons.jwt.{KID, PublicKeysHolder, SerializedKey}
 import it.pagopa.interop.commons.jwt.service.impl.{DefaultClientAssertionValidator, getClaimsVerifier}
 import it.pagopa.interop.commons.jwt.service.{ClientAssertionValidator, InteropTokenGenerator}
-import org.mockito.scalatest.IdiomaticMockito
+import org.scalamock.scalatest.MockFactory
 import org.scalatest.wordspec.AnyWordSpecLike
 import spray.json.DefaultJsonProtocol
 
 import scala.concurrent.ExecutionContext
 
-trait BaseSpec extends AnyWordSpecLike with SprayJsonSupport with DefaultJsonProtocol with IdiomaticMockito {
+trait BaseSpec extends AnyWordSpecLike with SprayJsonSupport with DefaultJsonProtocol with MockFactory {
 
   def clientAssertionValidator(interopAudience: String): ClientAssertionValidator = new DefaultClientAssertionValidator
     with PublicKeysHolder {

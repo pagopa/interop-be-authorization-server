@@ -2,15 +2,16 @@ package it.pagopa.interop.authorizationserver
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import it.pagopa.interop.authorizationserver.api.impl.AuthApiMarshallerImpl._
-import it.pagopa.interop.authorizationserver.model.{ClientCredentialsResponse, TokenType}
 import it.pagopa.interop.authorizationmanagement.client.invoker.{ApiError => AuthorizationManagementApiError}
 import it.pagopa.interop.authorizationmanagement.client.model.{ClientComponentState, ClientKind}
+import it.pagopa.interop.authorizationserver.api.impl.AuthApiMarshallerImpl._
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
-import it.pagopa.interop.authorizationserver.utils.SpecData._
+import it.pagopa.interop.authorizationserver.model.{ClientCredentialsResponse, JWTDetailsMessage, TokenType}
 import it.pagopa.interop.authorizationserver.utils.{BaseSpec, SpecHelper}
+import it.pagopa.interop.authorizationserver.utils.SpecData._
 import it.pagopa.interop.commons.jwt.{JWTConfiguration, JWTInternalTokenConfig}
 import org.scalatest.matchers.should.Matchers._
+import spray.json.JsonWriter
 
 import java.util.UUID
 import scala.concurrent.Future
@@ -25,8 +26,6 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
     "fail on wrong client assertion type" in {
       val resource                 = eServiceAudience
       val wrongClientAssertionType = "something-wrong"
-
-      mockInternalTokenGeneration(jwtConfig)
 
       Get() ~> service.createToken(
         Some(clientId.toString),
@@ -43,8 +42,6 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       val resource       = eServiceAudience
       val wrongGrantType = "something-wrong"
 
-      mockInternalTokenGeneration(jwtConfig)
-
       Get() ~> service.createToken(
         Some(clientId.toString),
         validClientAssertion,
@@ -60,8 +57,6 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       val resource           = eServiceAudience
       val malformedAssertion = "something-wrong"
 
-      mockInternalTokenGeneration(jwtConfig)
-
       Get() ~> service.createToken(
         Some(clientId.toString),
         malformedAssertion,
@@ -76,8 +71,6 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
     "fail on wrong audience in assertion" in {
       val resource = eServiceAudience
 
-      mockInternalTokenGeneration(jwtConfig)
-
       Get() ~> customService(interopAudience = "another-audience").createToken(
         Some(clientId.toString),
         validClientAssertion,
@@ -91,8 +84,6 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
 
     "fail if client ID in the assertion is different from the parameter client ID" in {
       val resource = eServiceAudience
-
-      mockInternalTokenGeneration(jwtConfig)
 
       Get() ~> service.createToken(
         Some(UUID.randomUUID().toString),
@@ -110,8 +101,10 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
 
       mockInternalTokenGeneration(jwtConfig)
 
-      mockAuthorizationManagementService
-        .getKey(eqTo(clientId), eqTo(kid))(*[Seq[(String, String)]])
+      (mockAuthorizationManagementService
+        .getKey(_: UUID, _: String)(_: Seq[(String, String)]))
+        .expects(clientId, kid, *)
+        .once()
         .returns(
           Future.failed(AuthorizationManagementApiError(code = 404, message = "something", responseContent = None))
         )
@@ -152,7 +145,11 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       mockClientRetrieve()
       mockConsumerTokenGeneration()
 
-      mockQueueService.send(expectedQueueMessage).returns(Future.failed(new Throwable()))
+      (mockQueueService
+        .send(_: JWTDetailsMessage)(_: JsonWriter[JWTDetailsMessage]))
+        .expects(expectedQueueMessage, *)
+        .once()
+        .returns(Future.failed(new Throwable()))
 
       Get() ~> service.createToken(
         Some(clientId.toString),
@@ -198,8 +195,6 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       mockInternalTokenGeneration(jwtConfig)
       mockKeyRetrieve()
       mockClientRetrieve(activeClient.copy(purposes = Seq.empty))
-      mockConsumerTokenGeneration()
-      mockQueueMessagePublication()
 
       Get() ~> service.createToken(
         Some(clientId.toString),
@@ -218,8 +213,6 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       mockInternalTokenGeneration(jwtConfig)
       mockKeyRetrieve()
       mockClientRetrieve(makeClient(purposeState = ClientComponentState.INACTIVE))
-      mockConsumerTokenGeneration()
-      mockQueueMessagePublication()
 
       Get() ~> service.createToken(
         Some(clientId.toString),
@@ -238,8 +231,6 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       mockInternalTokenGeneration(jwtConfig)
       mockKeyRetrieve()
       mockClientRetrieve(makeClient(eServiceState = ClientComponentState.INACTIVE))
-      mockConsumerTokenGeneration()
-      mockQueueMessagePublication()
 
       Get() ~> service.createToken(
         Some(clientId.toString),
@@ -258,8 +249,6 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       mockInternalTokenGeneration(jwtConfig)
       mockKeyRetrieve()
       mockClientRetrieve(makeClient(agreementState = ClientComponentState.INACTIVE))
-      mockConsumerTokenGeneration()
-      mockQueueMessagePublication()
 
       Get() ~> service.createToken(
         Some(clientId.toString),
