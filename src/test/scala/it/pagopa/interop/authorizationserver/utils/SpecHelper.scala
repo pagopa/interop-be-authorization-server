@@ -24,10 +24,10 @@ trait SpecHelper { self: BaseSpec =>
       )
       .returns(Success(internalToken))
 
-  def mockKeyRetrieve(): ScalaOngoingStubbing[Future[ClientKey]] =
+  def mockKeyRetrieve(result: ClientKey = clientKey): ScalaOngoingStubbing[Future[ClientKey]] =
     mockAuthorizationManagementService
       .getKey(eqTo(clientId), eqTo(kid))(*[Seq[(String, String)]])
-      .returns(Future.successful(clientKey))
+      .returns(Future.successful(result))
 
   def mockClientRetrieve(result: Client = activeClient): ScalaOngoingStubbing[Future[Client]] =
     mockAuthorizationManagementService

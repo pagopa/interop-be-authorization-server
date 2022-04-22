@@ -90,7 +90,10 @@ final case class AuthApiServiceImpl(
         .recoverWith {
           case err: AuthorizationApiError[_] if err.code == 404 => Future.failed(KeyNotFound(err.getMessage))
         }
-      _                         <- checker.verify(publicKey).toFuture
+      _                         <- checker
+        .verify(publicKey)
+        .toFuture
+        .recoverWith(ex => Future.failed(InvalidAssertionSignature(clientUUID, checker.kid, ex.getMessage)))
       purposeId                 <- checker.purposeId.traverse(_.toFutureUUID)
       client                    <- authorizationManagementService.getClient(clientUUID)(m2mContexts)
       (audience, tokenDuration) <- checkClientValidity(client, purposeId)
