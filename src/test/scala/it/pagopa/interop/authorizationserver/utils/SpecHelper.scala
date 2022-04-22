@@ -5,7 +5,7 @@ import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
 import it.pagopa.interop.authorizationserver.utils.SpecData._
 import it.pagopa.interop.commons.jwt.JWTInternalTokenConfig
 import it.pagopa.interop.commons.jwt.model.{RSA, Token}
-import it.pagopa.interop.commons.utils.PURPOSE_ID_CLAIM
+import it.pagopa.interop.commons.utils.{ORGANIZATION_ID_CLAIM, PURPOSE_ID_CLAIM}
 import org.mockito.stubbing.ScalaOngoingStubbing
 
 import scala.concurrent.Future
@@ -34,7 +34,7 @@ trait SpecHelper { self: BaseSpec =>
       .getClient(eqTo(clientId))(*[Seq[(String, String)]])
       .returns(Future.successful(result))
 
-  def mockTokenGeneration(): ScalaOngoingStubbing[Try[Token]] =
+  def mockConsumerTokenGeneration(): ScalaOngoingStubbing[Try[Token]] =
     mockInteropTokenGenerator
       .generate(
         clientAssertion = validClientAssertion,
@@ -42,6 +42,17 @@ trait SpecHelper { self: BaseSpec =>
         customClaims = Map(PURPOSE_ID_CLAIM -> purposeId.toString),
         tokenIssuer = ApplicationConfiguration.interopIdIssuer,
         validityDurationInSeconds = eServiceTokenDuration.toLong // TODO This could be an Int
+      )
+      .returns(Success(generatedToken))
+
+  def mockApiTokenGeneration(): ScalaOngoingStubbing[Try[Token]] =
+    mockInteropTokenGenerator
+      .generate(
+        clientAssertion = validClientAssertion,
+        audience = List(interopAudience),
+        customClaims = Map(ORGANIZATION_ID_CLAIM -> consumerId.toString),
+        tokenIssuer = ApplicationConfiguration.interopIdIssuer,
+        validityDurationInSeconds = ApplicationConfiguration.interopTokenDuration.toLong // TODO This could be an Int
       )
       .returns(Success(generatedToken))
 

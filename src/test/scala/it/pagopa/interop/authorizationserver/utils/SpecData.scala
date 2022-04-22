@@ -1,18 +1,7 @@
 package it.pagopa.interop.authorizationserver.utils
 
-import it.pagopa.interop.authorizationmanagement.client.model.{
-  Client,
-  ClientAgreementDetails,
-  ClientComponentState,
-  ClientEServiceDetails,
-  ClientKey,
-  ClientKind,
-  ClientPurposeDetails,
-  ClientStatesChain,
-  Key,
-  Purpose
-}
-import it.pagopa.interop.authorizationserver.model.{ClientCredentialsResponse, JWTDetailsMessage, TokenType}
+import it.pagopa.interop.authorizationmanagement.client.model._
+import it.pagopa.interop.authorizationserver.model.JWTDetailsMessage
 import it.pagopa.interop.commons.jwt.model.Token
 
 import java.time.OffsetDateTime
@@ -80,7 +69,8 @@ object SpecData {
   def makeClient(
     purposeState: ClientComponentState = ClientComponentState.ACTIVE,
     eServiceState: ClientComponentState = ClientComponentState.ACTIVE,
-    agreementState: ClientComponentState = ClientComponentState.ACTIVE
+    agreementState: ClientComponentState = ClientComponentState.ACTIVE,
+    kind: ClientKind = ClientKind.CONSUMER
   ): Client = Client(
     id = clientId,
     consumerId = consumerId,
@@ -103,13 +93,14 @@ object SpecData {
       )
     ),
     relationships = Set.empty,
-    kind = ClientKind.CONSUMER
+    kind = kind
   )
 
   val activeClient: Client = makeClient(
     purposeState = ClientComponentState.ACTIVE,
     eServiceState = ClientComponentState.ACTIVE,
-    agreementState = ClientComponentState.ACTIVE
+    agreementState = ClientComponentState.ACTIVE,
+    kind = ClientKind.CONSUMER
   )
 
   val expectedQueueMessage: JWTDetailsMessage = JWTDetailsMessage(
@@ -121,10 +112,4 @@ object SpecData {
     kid = kid
   )
 
-  val expectedResponse: ClientCredentialsResponse =
-    ClientCredentialsResponse(
-      generatedToken.serialized,
-      TokenType.Bearer,
-      generatedToken.exp.toInt // TODO Check this (expires_in or expires_at?)
-    )
 }

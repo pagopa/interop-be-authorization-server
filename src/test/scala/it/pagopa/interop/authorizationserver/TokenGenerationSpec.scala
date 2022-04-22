@@ -3,9 +3,10 @@ package it.pagopa.interop.authorizationserver
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import it.pagopa.interop.authorizationserver.api.impl.AuthApiMarshallerImpl._
-import it.pagopa.interop.authorizationserver.model.ClientCredentialsResponse
+import it.pagopa.interop.authorizationserver.model.{ClientCredentialsResponse, TokenType}
 import it.pagopa.interop.authorizationmanagement.client.invoker.{ApiError => AuthorizationManagementApiError}
-import it.pagopa.interop.authorizationmanagement.client.model.ClientComponentState
+import it.pagopa.interop.authorizationmanagement.client.model.{ClientComponentState, ClientKind}
+import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
 import it.pagopa.interop.authorizationserver.utils.SpecData._
 import it.pagopa.interop.authorizationserver.utils.{BaseSpec, SpecHelper}
 import it.pagopa.interop.commons.jwt.{JWTConfiguration, JWTInternalTokenConfig}
@@ -149,7 +150,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       mockInternalTokenGeneration(jwtConfig)
       mockKeyRetrieve()
       mockClientRetrieve()
-      mockTokenGeneration()
+      mockConsumerTokenGeneration()
 
       mockQueueService.send(expectedQueueMessage).returns(Future.failed(new Throwable()))
 
@@ -161,7 +162,6 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
         resource
       ) ~> check {
         status shouldEqual StatusCodes.OK
-        responseAs[ClientCredentialsResponse] shouldEqual expectedResponse
       }
     }
 
@@ -174,8 +174,11 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       mockInternalTokenGeneration(jwtConfig)
       mockKeyRetrieve()
       mockClientRetrieve()
-      mockTokenGeneration()
+      mockConsumerTokenGeneration()
       mockQueueMessagePublication()
+
+      val expectedResponse =
+        ClientCredentialsResponse(generatedToken.serialized, TokenType.Bearer, eServiceTokenDuration)
 
       Get() ~> service.createToken(
         Some(clientId.toString),
@@ -195,7 +198,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       mockInternalTokenGeneration(jwtConfig)
       mockKeyRetrieve()
       mockClientRetrieve(activeClient.copy(purposes = Seq.empty))
-      mockTokenGeneration()
+      mockConsumerTokenGeneration()
       mockQueueMessagePublication()
 
       Get() ~> service.createToken(
@@ -215,7 +218,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       mockInternalTokenGeneration(jwtConfig)
       mockKeyRetrieve()
       mockClientRetrieve(makeClient(purposeState = ClientComponentState.INACTIVE))
-      mockTokenGeneration()
+      mockConsumerTokenGeneration()
       mockQueueMessagePublication()
 
       Get() ~> service.createToken(
@@ -235,7 +238,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       mockInternalTokenGeneration(jwtConfig)
       mockKeyRetrieve()
       mockClientRetrieve(makeClient(eServiceState = ClientComponentState.INACTIVE))
-      mockTokenGeneration()
+      mockConsumerTokenGeneration()
       mockQueueMessagePublication()
 
       Get() ~> service.createToken(
@@ -255,7 +258,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       mockInternalTokenGeneration(jwtConfig)
       mockKeyRetrieve()
       mockClientRetrieve(makeClient(agreementState = ClientComponentState.INACTIVE))
-      mockTokenGeneration()
+      mockConsumerTokenGeneration()
       mockQueueMessagePublication()
 
       Get() ~> service.createToken(
@@ -271,5 +274,40 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
 
 //    TODO Implement this if resource implementation will not be reverted
 //    "fail if resource does not correspond to EService audience" in {}
+  }
+
+  "API token generation" should {
+    "succeed with correct request" in {
+      val resource = interopAudience
+
+      val apiClient = makeClient(kind = ClientKind.API).copy(purposes = Seq.empty)
+
+      mockInternalTokenGeneration(jwtConfig)
+      mockKeyRetrieve()
+      mockClientRetrieve(apiClient)
+      mockApiTokenGeneration()
+      mockQueueMessagePublication()
+
+      val expectedResponse =
+        ClientCredentialsResponse(
+          generatedToken.serialized,
+          TokenType.Bearer,
+          ApplicationConfiguration.interopTokenDuration
+        )
+
+      Get() ~> service.createToken(
+        Some(clientId.toString),
+        validClientAssertion,
+        clientAssertionType,
+        grantType,
+        resource
+      ) ~> check {
+        status shouldEqual StatusCodes.OK
+        responseAs[ClientCredentialsResponse] shouldEqual expectedResponse
+      }
+    }
+
+//    TODO Implement this if resource implementation will not be reverted
+//    "fail if resource does not correspond to Interop audience" in {}
   }
 }
