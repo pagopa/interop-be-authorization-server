@@ -184,7 +184,9 @@ final case class AuthApiServiceImpl(
       .as(())
       .recoverWith(ex =>
         Future.successful(
-          logger.error(s"Unable to save JWT details to queue. Details: $jwtDetails Reason: ${ex.getMessage}")
+          logger.error(
+            s"Unable to save JWT details to queue. Details: ${jwtDetails.readableString} Reason: ${ex.getMessage}"
+          )
         )
       )
   }

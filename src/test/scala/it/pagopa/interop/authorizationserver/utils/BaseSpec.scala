@@ -19,12 +19,9 @@ import scala.concurrent.ExecutionContext
 
 trait BaseSpec extends AnyWordSpecLike with SprayJsonSupport with DefaultJsonProtocol with IdiomaticMockito {
 
-  def clientAssertionValidator(
-    kid: String,
-    encodedPublicKey: String,
-    interopAudience: String
-  ): ClientAssertionValidator = new DefaultClientAssertionValidator with PublicKeysHolder {
-    var publicKeyset: Map[KID, SerializedKey]                                        = Map(kid -> encodedPublicKey)
+  def clientAssertionValidator(interopAudience: String): ClientAssertionValidator = new DefaultClientAssertionValidator
+    with PublicKeysHolder {
+    var publicKeyset: Map[KID, SerializedKey]                                        = Map.empty
     override protected val claimsVerifier: DefaultJWTClaimsVerifier[SecurityContext] =
       getClaimsVerifier(audience = Set(interopAudience))
   }
@@ -35,16 +32,13 @@ trait BaseSpec extends AnyWordSpecLike with SprayJsonSupport with DefaultJsonPro
 
   def service(implicit ec: ExecutionContext): AuthApiService = customService()
 
-  def customService(
-    kid: String = SpecData.kid,
-    encodedPublicKey: String = SpecData.validPublicKey,
-    interopAudience: String = SpecData.interopAudience
-  )(implicit ec: ExecutionContext): AuthApiService = AuthApiServiceImpl(
-    authorizationManagementService = mockAuthorizationManagementService,
-    jwtValidator = clientAssertionValidator(kid, encodedPublicKey, interopAudience),
-    interopTokenGenerator = mockInteropTokenGenerator,
-    queueService = mockQueueService
-  )
+  def customService(interopAudience: String = SpecData.interopAudience)(implicit ec: ExecutionContext): AuthApiService =
+    AuthApiServiceImpl(
+      authorizationManagementService = mockAuthorizationManagementService,
+      jwtValidator = clientAssertionValidator(interopAudience),
+      interopTokenGenerator = mockInteropTokenGenerator,
+      queueService = mockQueueService
+    )
 
   implicit def fromResponseUnmarshallerPurpose: FromEntityUnmarshaller[ClientCredentialsResponse] =
     sprayJsonUnmarshaller[ClientCredentialsResponse]

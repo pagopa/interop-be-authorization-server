@@ -142,6 +142,28 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       }
     }
 
+    "succeed even if publish on queue fails" in {
+      val resource = eServiceAudience
+
+      mockInternalTokenGeneration(jwtConfig)
+      mockKeyRetrieve()
+      mockClientRetrieve()
+      mockTokenGeneration()
+
+      mockQueueService.send(expectedQueueMessage).returns(Future.failed(new Throwable()))
+
+      Get() ~> service.createToken(
+        Some(clientId.toString),
+        validClientAssertion,
+        clientAssertionType,
+        grantType,
+        resource
+      ) ~> check {
+        status shouldEqual StatusCodes.OK
+        responseAs[ClientCredentialsResponse] shouldEqual expectedResponse
+      }
+    }
+
   }
 
   "Consumer token generation" should {
