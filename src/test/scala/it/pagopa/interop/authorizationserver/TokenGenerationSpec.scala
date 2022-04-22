@@ -15,24 +15,12 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
 
   val jwtConfig: JWTInternalTokenConfig = JWTConfiguration.jwtInternalTokenConfig
 
-//  val clientAssertionChecker: ClientAssertionChecker = mock[ClientAssertionChecker]
-//
-//  clientAssertionChecker.kid returns kid
-//  clientAssertionChecker.subject returns clientId.toString
-//  clientAssertionChecker.purposeId returns Some(purposeId.toString)
-
   "Consumer token generation" should {
     "succeed with correct request" in {
-
       val resource = eServiceAudience
 
       mockInternalTokenGeneration(jwtConfig)
-//      mockClientAssertionValidator
-//        .extractJwtInfo(*[ValidClientAssertionRequest])
-//        .returns(Success(clientAssertionChecker))
-
       mockKeyRetrieve()
-//      clientAssertionChecker.verify(*[String]).returns(Success(()))
       mockClientRetrieve()
       mockTokenGeneration()
       mockQueueMessagePublication()
@@ -47,11 +35,9 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
         status shouldEqual StatusCodes.OK
         responseAs[ClientCredentialsResponse] shouldEqual expectedResponse
       }
-
     }
 
     "fail on wrong client assertion type" in {
-
       val resource                 = eServiceAudience
       val wrongClientAssertionType = "something-wrong"
 
@@ -66,11 +52,9 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       ) ~> check {
         status shouldEqual StatusCodes.BadRequest
       }
-
     }
 
     "fail on wrong grant type" in {
-
       val resource       = eServiceAudience
       val wrongGrantType = "something-wrong"
 
@@ -85,7 +69,39 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       ) ~> check {
         status shouldEqual StatusCodes.BadRequest
       }
+    }
 
+    "fail on malformed assertion" in {
+      val resource           = eServiceAudience
+      val malformedAssertion = "something-wrong"
+
+      mockInternalTokenGeneration(jwtConfig)
+
+      Get() ~> service.createToken(
+        Some(clientId.toString),
+        malformedAssertion,
+        clientAssertionType,
+        grantType,
+        resource
+      ) ~> check {
+        status shouldEqual StatusCodes.BadRequest
+      }
+    }
+
+    "fail on wrong audience in assertion" in {
+      val resource = eServiceAudience
+
+      mockInternalTokenGeneration(jwtConfig)
+
+      Get() ~> customService(interopAudience = "another-audience").createToken(
+        Some(clientId.toString),
+        validClientAssertion,
+        clientAssertionType,
+        grantType,
+        resource
+      ) ~> check {
+        status shouldEqual StatusCodes.BadRequest
+      }
     }
 
   }

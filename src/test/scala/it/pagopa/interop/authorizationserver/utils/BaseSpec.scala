@@ -19,20 +19,29 @@ import scala.concurrent.ExecutionContext
 
 trait BaseSpec extends AnyWordSpecLike with SprayJsonSupport with DefaultJsonProtocol with IdiomaticMockito {
 
-  val clientAssertionValidator: ClientAssertionValidator = new DefaultClientAssertionValidator with PublicKeysHolder {
-    var publicKeyset: Map[KID, SerializedKey] = Map(SpecData.kid -> SpecData.validPublicKey)
+  def clientAssertionValidator(
+    kid: String,
+    encodedPublicKey: String,
+    interopAudience: String
+  ): ClientAssertionValidator = new DefaultClientAssertionValidator with PublicKeysHolder {
+    var publicKeyset: Map[KID, SerializedKey]                                        = Map(kid -> encodedPublicKey)
     override protected val claimsVerifier: DefaultJWTClaimsVerifier[SecurityContext] =
-      getClaimsVerifier(audience = Set(SpecData.interopAudience))
+      getClaimsVerifier(audience = Set(interopAudience))
   }
 
-//  val mockClientAssertionValidator: ClientAssertionValidator             = mock[ClientAssertionValidator]
   val mockInteropTokenGenerator: InteropTokenGenerator                   = mock[InteropTokenGenerator]
   val mockAuthorizationManagementService: AuthorizationManagementService = mock[AuthorizationManagementService]
   val mockQueueService: QueueService                                     = mock[QueueService]
 
-  def service(implicit ec: ExecutionContext): AuthApiService = AuthApiServiceImpl(
+  def service(implicit ec: ExecutionContext): AuthApiService = customService()
+
+  def customService(
+    kid: String = SpecData.kid,
+    encodedPublicKey: String = SpecData.validPublicKey,
+    interopAudience: String = SpecData.interopAudience
+  )(implicit ec: ExecutionContext): AuthApiService = AuthApiServiceImpl(
     authorizationManagementService = mockAuthorizationManagementService,
-    jwtValidator = clientAssertionValidator,
+    jwtValidator = clientAssertionValidator(kid, encodedPublicKey, interopAudience),
     interopTokenGenerator = mockInteropTokenGenerator,
     queueService = mockQueueService
   )
