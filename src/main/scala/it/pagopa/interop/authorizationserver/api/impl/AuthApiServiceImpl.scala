@@ -62,14 +62,7 @@ final case class AuthApiServiceImpl(
     toEntityMarshallerClientCredentialsResponse: ToEntityMarshaller[ClientCredentialsResponse],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
-    val tokenAndChecker: Try[(String, ClientAssertionChecker)] = for {
-      m2mToken               <- interopTokenGenerator.generateInternalToken(
-        jwtAlgorithmType = RSA,
-        subject = jwtConfig.subject,
-        audience = jwtConfig.audience.toList,
-        tokenIssuer = jwtConfig.issuer,
-        secondsDuration = jwtConfig.durationInSeconds
-      )
+    val getChecker: Try[ClientAssertionChecker] = for {
       clientUUID             <- clientId.traverse(_.toUUID)
       clientAssertionRequest <- ValidClientAssertionRequest
         .from(clientAssertion, clientAssertionType, grantType, clientUUID)
@@ -77,15 +70,23 @@ final case class AuthApiServiceImpl(
       checker                <- jwtValidator
         .extractJwtInfo(clientAssertionRequest)
         .recoverWith { case err => Failure(InvalidAssertion(err.getMessage)) }
-    } yield (m2mToken.serialized, checker)
+    } yield checker
 
     val result: Future[ClientCredentialsResponse] = for {
-      (m2mToken, checker) <- tokenAndChecker.toFuture
-      m2mContexts = contexts.filter(_._1 == CORRELATION_ID_HEADER) :+ (BEARER -> m2mToken)
-      kid         = checker.kid
+      checker  <- getChecker.toFuture
+      m2mToken <- interopTokenGenerator
+        .generateInternalToken(
+          jwtAlgorithmType = RSA,
+          subject = jwtConfig.subject,
+          audience = jwtConfig.audience.toList,
+          tokenIssuer = jwtConfig.issuer,
+          secondsDuration = jwtConfig.durationInSeconds
+        )
+        .toFuture
+      m2mContexts = contexts.filter(_._1 == CORRELATION_ID_HEADER) :+ (BEARER -> m2mToken.serialized)
       clientUUID                <- checker.subject.toFutureUUID
       publicKey                 <- authorizationManagementService
-        .getKey(clientUUID, kid)(m2mContexts)
+        .getKey(clientUUID, checker.kid)(m2mContexts)
         .map(k => AuthorizationManagementInvoker.serializeKey(k.key))
         .recoverWith {
           case err: AuthorizationApiError[_] if err.code == 404 => Future.failed(KeyNotFound(err.getMessage))
@@ -107,7 +108,7 @@ final case class AuthApiServiceImpl(
           validityDurationInSeconds = tokenDuration.toLong
         )
         .toFuture
-      _                         <- sendToQueue(token, client, purposeId, kid)
+      _                         <- sendToQueue(token, client, purposeId, checker.kid)
     } yield ClientCredentialsResponse(access_token = token.serialized, token_type = Bearer, expires_in = tokenDuration)
 
     onComplete(result) {
@@ -122,7 +123,7 @@ final case class AuthApiServiceImpl(
   }
 
   private def checkClientValidity(client: Client, purposeId: Option[UUID]): Future[(Seq[String], Int)] = {
-    def checkClientStates(statesChain: ClientStatesChain): Future[(Seq[String], Int)] = {
+    def checkClientStates(statesChain: ClientStatesChain): Future[Unit] = {
 
       def validate(
         state: ClientComponentState,
@@ -140,7 +141,7 @@ final case class AuthApiServiceImpl(
 
       validation match {
         case Invalid(e) => Future.failed(InactiveClient(client.id, e.map(_.getMessage).toList))
-        case Valid(_)   => Future.successful((statesChain.eservice.audience, statesChain.eservice.voucherLifespan))
+        case Valid(_)   => Future.successful(())
       }
 
     }
@@ -152,8 +153,8 @@ final case class AuthApiServiceImpl(
           purpose     <- client.purposes
             .find(_.purposeId == purposeUUID)
             .toFuture(PurposeNotFound(client.id, purposeUUID))
-          checkState  <- checkClientStates(purpose.states)
-        } yield checkState
+          _  <- checkClientStates(purpose.states)
+        } yield (purpose.states.eservice.audience, purpose.states.eservice.voucherLifespan)
       case ClientKind.API      =>
         Future.successful(
           (ApplicationConfiguration.generatedM2mJwtAudience.toSeq, ApplicationConfiguration.generatedM2mJwtDuration)
