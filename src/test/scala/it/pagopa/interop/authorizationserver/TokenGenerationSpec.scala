@@ -19,28 +19,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
 
   val jwtConfig: JWTInternalTokenConfig = JWTConfiguration.jwtInternalTokenConfig
 
-  "Consumer token generation" should {
-    "succeed with correct request" in {
-      val resource = eServiceAudience
-
-      mockInternalTokenGeneration(jwtConfig)
-      mockKeyRetrieve()
-      mockClientRetrieve()
-      mockTokenGeneration()
-      mockQueueMessagePublication()
-
-      Get() ~> service.createToken(
-        Some(clientId.toString),
-        validClientAssertion,
-        clientAssertionType,
-        grantType,
-        resource
-      ) ~> check {
-        status shouldEqual StatusCodes.OK
-        responseAs[ClientCredentialsResponse] shouldEqual expectedResponse
-      }
-    }
-
+  "Token generation" should {
     "fail on wrong client assertion type" in {
       val resource                 = eServiceAudience
       val wrongClientAssertionType = "something-wrong"
@@ -160,6 +139,30 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
         resource
       ) ~> check {
         status shouldEqual StatusCodes.BadRequest
+      }
+    }
+
+  }
+
+  "Consumer token generation" should {
+    "succeed with correct request" in {
+      val resource = eServiceAudience
+
+      mockInternalTokenGeneration(jwtConfig)
+      mockKeyRetrieve()
+      mockClientRetrieve()
+      mockTokenGeneration()
+      mockQueueMessagePublication()
+
+      Get() ~> service.createToken(
+        Some(clientId.toString),
+        validClientAssertion,
+        clientAssertionType,
+        grantType,
+        resource
+      ) ~> check {
+        status shouldEqual StatusCodes.OK
+        responseAs[ClientCredentialsResponse] shouldEqual expectedResponse
       }
     }
 
