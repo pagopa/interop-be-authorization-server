@@ -37,7 +37,7 @@ trait SpecHelper { self: BaseSpec =>
   def mockTokenGeneration(): ScalaOngoingStubbing[Try[Token]] =
     mockInteropTokenGenerator
       .generate(
-        clientAssertion = clientAssertion,
+        clientAssertion = validClientAssertion,
         audience = List(eServiceAudience),
         customClaims = Map(PURPOSE_ID_CLAIM -> purposeId.toString),
         tokenIssuer = ApplicationConfiguration.interopIdIssuer,
