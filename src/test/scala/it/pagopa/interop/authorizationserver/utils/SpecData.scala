@@ -77,7 +77,11 @@ object SpecData {
   val clientKey: ClientKey =
     ClientKey(key = modelKey, relationshipId = UUID.randomUUID(), name = "keyName", createdAt = OffsetDateTime.now())
 
-  val activeClient: Client = Client(
+  def makeClient(
+    purposeState: ClientComponentState = ClientComponentState.ACTIVE,
+    eServiceState: ClientComponentState = ClientComponentState.ACTIVE,
+    agreementState: ClientComponentState = ClientComponentState.ACTIVE
+  ): Client = Client(
     id = clientId,
     consumerId = consumerId,
     name = "clientName",
@@ -89,21 +93,23 @@ object SpecData {
           id = UUID.randomUUID(),
           eservice = ClientEServiceDetails(
             eserviceId = eServiceId,
-            state = ClientComponentState.ACTIVE,
+            state = eServiceState,
             audience = Seq(eServiceAudience),
             voucherLifespan = eServiceTokenDuration
           ),
-          agreement = ClientAgreementDetails(
-            eserviceId = eServiceId,
-            consumerId = consumerId,
-            state = ClientComponentState.ACTIVE
-          ),
-          purpose = ClientPurposeDetails(purposeId = purposeId, state = ClientComponentState.ACTIVE)
+          agreement = ClientAgreementDetails(eserviceId = eServiceId, consumerId = consumerId, state = agreementState),
+          purpose = ClientPurposeDetails(purposeId = purposeId, state = purposeState)
         )
       )
     ),
     relationships = Set.empty,
     kind = ClientKind.CONSUMER
+  )
+
+  val activeClient: Client = makeClient(
+    purposeState = ClientComponentState.ACTIVE,
+    eServiceState = ClientComponentState.ACTIVE,
+    agreementState = ClientComponentState.ACTIVE
   )
 
   val expectedQueueMessage: JWTDetailsMessage = JWTDetailsMessage(

@@ -5,6 +5,7 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import it.pagopa.interop.authorizationserver.api.impl.AuthApiMarshallerImpl._
 import it.pagopa.interop.authorizationserver.model.ClientCredentialsResponse
 import it.pagopa.interop.authorizationmanagement.client.invoker.{ApiError => AuthorizationManagementApiError}
+import it.pagopa.interop.authorizationmanagement.client.model.ClientComponentState
 import it.pagopa.interop.authorizationserver.utils.SpecData._
 import it.pagopa.interop.authorizationserver.utils.{BaseSpec, SpecHelper}
 import it.pagopa.interop.commons.jwt.{JWTConfiguration, JWTInternalTokenConfig}
@@ -188,5 +189,87 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       }
     }
 
+    "fail if purpose id is not assigned to the client" in {
+      val resource = eServiceAudience
+
+      mockInternalTokenGeneration(jwtConfig)
+      mockKeyRetrieve()
+      mockClientRetrieve(activeClient.copy(purposes = Seq.empty))
+      mockTokenGeneration()
+      mockQueueMessagePublication()
+
+      Get() ~> service.createToken(
+        Some(clientId.toString),
+        validClientAssertion,
+        clientAssertionType,
+        grantType,
+        resource
+      ) ~> check {
+        status shouldEqual StatusCodes.BadRequest
+      }
+    }
+
+    "fail if Purpose is not active" in {
+      val resource = eServiceAudience
+
+      mockInternalTokenGeneration(jwtConfig)
+      mockKeyRetrieve()
+      mockClientRetrieve(makeClient(purposeState = ClientComponentState.INACTIVE))
+      mockTokenGeneration()
+      mockQueueMessagePublication()
+
+      Get() ~> service.createToken(
+        Some(clientId.toString),
+        validClientAssertion,
+        clientAssertionType,
+        grantType,
+        resource
+      ) ~> check {
+        status shouldEqual StatusCodes.BadRequest
+      }
+    }
+
+    "fail if EService is not active" in {
+      val resource = eServiceAudience
+
+      mockInternalTokenGeneration(jwtConfig)
+      mockKeyRetrieve()
+      mockClientRetrieve(makeClient(eServiceState = ClientComponentState.INACTIVE))
+      mockTokenGeneration()
+      mockQueueMessagePublication()
+
+      Get() ~> service.createToken(
+        Some(clientId.toString),
+        validClientAssertion,
+        clientAssertionType,
+        grantType,
+        resource
+      ) ~> check {
+        status shouldEqual StatusCodes.BadRequest
+      }
+    }
+
+    "fail if Agreement is not active" in {
+      val resource = eServiceAudience
+
+      mockInternalTokenGeneration(jwtConfig)
+      mockKeyRetrieve()
+      mockClientRetrieve(makeClient(agreementState = ClientComponentState.INACTIVE))
+      mockTokenGeneration()
+      mockQueueMessagePublication()
+
+      Get() ~> service.createToken(
+        Some(clientId.toString),
+        validClientAssertion,
+        clientAssertionType,
+        grantType,
+        resource
+      ) ~> check {
+        status shouldEqual StatusCodes.BadRequest
+      }
+    }
+
+//    TODO Implement this if resource implementation will not be reverted
+//    "fail if resource does not correspond to EService audience" in {}
   }
 }
