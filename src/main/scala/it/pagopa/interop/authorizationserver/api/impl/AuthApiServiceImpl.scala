@@ -51,8 +51,7 @@ final case class AuthApiServiceImpl(
     clientId: Option[String],
     clientAssertion: String,
     clientAssertionType: String,
-    grantType: String,
-    resource: String
+    grantType: String
   )(implicit
     contexts: Seq[(String, String)],
     toEntityMarshallerClientCredentialsResponse: ToEntityMarshaller[ClientCredentialsResponse],
@@ -88,7 +87,7 @@ final case class AuthApiServiceImpl(
       _                         <- checker.verify(publicKey).toFuture
       purposeId                 <- checker.purposeId.traverse(_.toFutureUUID)
       client                    <- authorizationManagementService.getClient(clientUUID)(m2mContexts)
-      (audience, tokenDuration) <- checkClientValidity(client, purposeId, resource)
+      (audience, tokenDuration) <- checkClientValidity(client, purposeId)
       customClaims              <- getCustomClaims(client, purposeId)
       token                     <- interopTokenGenerator
         .generate(
@@ -112,11 +111,7 @@ final case class AuthApiServiceImpl(
     }
   }
 
-  private def checkClientValidity(
-    client: Client,
-    purposeId: Option[UUID],
-    resource: String
-  ): Future[(Seq[String], Int)] = {
+  private def checkClientValidity(client: Client, purposeId: Option[UUID]): Future[(Seq[String], Int)] = {
     def checkClientStates(statesChain: ClientStatesChain): Future[(Seq[String], Int)] = {
 
       def validate(
@@ -147,15 +142,12 @@ final case class AuthApiServiceImpl(
           purpose     <- client.purposes
             .find(_.purposeId == purposeUUID)
             .toFuture(PurposeNotFound(client.id, purposeUUID))
-          _           <- Future
-            .successful(purpose.states.eservice.audience.contains(resource))
-            .ensure(InvalidResourceForPurpose(purposeUUID, resource))(_ == true)
           checkState  <- checkClientStates(purpose.states)
         } yield checkState
       case ClientKind.API      =>
-        Future
-          .successful((ApplicationConfiguration.interopAudience.toSeq, ApplicationConfiguration.interopTokenDuration))
-          .ensure(InvalidInteropResource(resource))(_._1.contains(resource))
+        Future.successful(
+          (ApplicationConfiguration.interopAudience.toSeq, ApplicationConfiguration.interopTokenDuration)
+        )
     }
   }
 
