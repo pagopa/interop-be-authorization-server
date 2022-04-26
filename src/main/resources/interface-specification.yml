@@ -87,7 +87,6 @@ components:
         - client_assertion
         - client_assertion_type
         - grant_type
-        - resource
       properties:
         client_id:
           type: string
@@ -102,9 +101,6 @@ components:
           type: string
           enum:
             - client_credentials
-        resource:
-          type: string
-          description: The resource the generated token will be used for. It must be one of the audiences of the destination E-Service
     TokenType:
       type: string
       description: Represents the token type

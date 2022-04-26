@@ -29,11 +29,4 @@ object AuthServerErrors {
 
   final case class KeyNotFound(message: String)
       extends ComponentError("0011", s"Key not found in client. Reasons: $message")
-
-  final case class InvalidResourceForPurpose(purposeId: UUID, resource: String)
-      extends ComponentError("0012", s"Resource $resource is not allowed for purpose $purposeId")
-
-  final case class InvalidInteropResource(resource: String)
-      extends ComponentError("0013", s"Resource $resource is not allowed for Interop client")
-
 }
