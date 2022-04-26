@@ -6,7 +6,7 @@ trait SpecConfiguration {
 
   val config: Config = ConfigFactory.parseResourcesAnySyntax("application-test")
 
-  val servicePort: Int = config.getInt("interop-authorization-server.port")
+  val servicePort: Int = config.getInt("authorization-server.port")
 }
 
 object SpecConfiguration extends SpecConfiguration
