@@ -1,7 +1,6 @@
 package it.pagopa.interop.authorizationserver.common
 
 import com.typesafe.config.{Config, ConfigFactory}
-import scala.jdk.CollectionConverters.ListHasAsScala
 
 object ApplicationConfiguration {
 
@@ -13,10 +12,12 @@ object ApplicationConfiguration {
 
   lazy val rsaPrivatePath: String = config.getString("interop-authorization-server.rsa-private-path")
 
-  lazy val interopIdIssuer: String              = config.getString("interop-authorization-server.jwt.issuer")
-  lazy val interopAudience: Set[String]         =
-    config.getStringList("interop-authorization-server.jwt.audience").asScala.toSet
+  lazy val generatedJwtIssuer: String           = config.getString("interop-authorization-server.generated-jwt.issuer")
+  lazy val generatedM2mJwtAudience: Set[String] =
+    config.getString("interop-authorization-server.generated-jwt.m2m-audience").split(",").toSet
+  lazy val generatedM2mJwtDuration: Int         =
+    config.getInt("interop-authorization-server.generated-jwt.m2m-duration-seconds")
+
   lazy val clientAssertionAudience: Set[String] =
-    config.getStringList("interop-authorization-server.jwt.client-assertion-audience").asScala.toSet
-  lazy val interopTokenDuration: Int            = config.getInt("interop-authorization-server.jwt.duration-seconds")
+    config.getString("interop-authorization-server.client-assertion-audience").split(",").toSet
 }

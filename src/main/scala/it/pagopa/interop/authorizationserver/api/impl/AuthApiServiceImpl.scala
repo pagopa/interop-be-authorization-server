@@ -94,7 +94,7 @@ final case class AuthApiServiceImpl(
           clientAssertion = clientAssertion,
           audience = audience.toList,
           customClaims = customClaims,
-          tokenIssuer = ApplicationConfiguration.interopIdIssuer,
+          tokenIssuer = ApplicationConfiguration.generatedJwtIssuer,
           validityDurationInSeconds = tokenDuration.toLong
         )
         .toFuture
@@ -146,7 +146,7 @@ final case class AuthApiServiceImpl(
         } yield checkState
       case ClientKind.API      =>
         Future.successful(
-          (ApplicationConfiguration.interopAudience.toSeq, ApplicationConfiguration.interopTokenDuration)
+          (ApplicationConfiguration.generatedM2mJwtAudience.toSeq, ApplicationConfiguration.generatedM2mJwtDuration)
         )
     }
   }
