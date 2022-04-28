@@ -71,7 +71,7 @@ object Main extends App with CORSSupport with VaultServiceDependency with Author
     clientAssertionValidator = new DefaultClientAssertionValidator with PublicKeysHolder {
       var publicKeyset: Map[KID, SerializedKey]                                        = keyset
       override protected val claimsVerifier: DefaultJWTClaimsVerifier[SecurityContext] =
-        getClaimsVerifier(audience = ApplicationConfiguration.interopAudience)
+        getClaimsVerifier(audience = ApplicationConfiguration.clientAssertionAudience)
     }
     interopTokenGenerator    = new DefaultInteropTokenGenerator with PrivateKeysHolder {
       override val RSAPrivateKeyset: Map[KID, SerializedKey] =
