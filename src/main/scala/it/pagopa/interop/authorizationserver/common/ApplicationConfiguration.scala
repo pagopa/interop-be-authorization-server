@@ -4,21 +4,21 @@ import com.typesafe.config.{Config, ConfigFactory}
 
 object ApplicationConfiguration {
 
-  lazy val config: Config = ConfigFactory.load()
+  val config: Config = ConfigFactory.load()
 
-  lazy val serverPort: Int = config.getInt("authorization-server.port")
+  val serverPort: Int = config.getInt("authorization-server.port")
 
-  lazy val authorizationManagementURL: String = config.getString("services.authorization-management")
+  val authorizationManagementURL: String = config.getString("services.authorization-management")
 
-  lazy val rsaPrivatePath: String = config.getString("authorization-server.rsa-private-path")
+  val rsaPrivatePath: String = config.getString("authorization-server.rsa-private-path")
 
-  lazy val generatedJwtIssuer: String           = config.getString("authorization-server.generated-jwt.issuer")
-  lazy val generatedM2mJwtAudience: Set[String] =
+  val generatedJwtIssuer: String           = config.getString("authorization-server.generated-jwt.issuer")
+  val generatedM2mJwtAudience: Set[String] =
     config.getString("authorization-server.generated-jwt.m2m-audience").split(",").toSet.filter(_.nonEmpty)
-  lazy val generatedM2mJwtDuration: Int         =
+  val generatedM2mJwtDuration: Int         =
     config.getInt("authorization-server.generated-jwt.m2m-duration-seconds")
 
-  lazy val clientAssertionAudience: Set[String] =
+  val clientAssertionAudience: Set[String] =
     config.getString("authorization-server.client-assertion-audience").split(",").toSet.filter(_.nonEmpty)
 
   val jwtQueueUrl: String = config.getString("authorization-server.jwt-queue-url")
