@@ -24,81 +24,68 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
 
   "Token generation" should {
     "fail on wrong client assertion type" in {
-      val resource                 = eServiceAudience
       val wrongClientAssertionType = "something-wrong"
 
       Get() ~> service.createToken(
         Some(clientId.toString),
         validClientAssertion,
         wrongClientAssertionType,
-        grantType,
-        resource
+        grantType
       ) ~> check {
         status shouldEqual StatusCodes.BadRequest
       }
     }
 
     "fail on wrong grant type" in {
-      val resource       = eServiceAudience
       val wrongGrantType = "something-wrong"
 
       Get() ~> service.createToken(
         Some(clientId.toString),
         validClientAssertion,
         clientAssertionType,
-        wrongGrantType,
-        resource
+        wrongGrantType
       ) ~> check {
         status shouldEqual StatusCodes.BadRequest
       }
     }
 
     "fail on malformed assertion" in {
-      val resource           = eServiceAudience
       val malformedAssertion = "something-wrong"
 
       Get() ~> service.createToken(
         Some(clientId.toString),
         malformedAssertion,
         clientAssertionType,
-        grantType,
-        resource
+        grantType
       ) ~> check {
         status shouldEqual StatusCodes.BadRequest
       }
     }
 
     "fail on wrong audience in assertion" in {
-      val resource = eServiceAudience
 
-      Get() ~> customService(interopAudience = "another-audience").createToken(
+      Get() ~> customService(clientAssertionAudience = "another-audience").createToken(
         Some(clientId.toString),
         validClientAssertion,
         clientAssertionType,
-        grantType,
-        resource
+        grantType
       ) ~> check {
         status shouldEqual StatusCodes.BadRequest
       }
     }
 
     "fail if client ID in the assertion is different from the parameter client ID" in {
-      val resource = eServiceAudience
-
       Get() ~> service.createToken(
         Some(UUID.randomUUID().toString),
         validClientAssertion,
         clientAssertionType,
-        grantType,
-        resource
+        grantType
       ) ~> check {
         status shouldEqual StatusCodes.BadRequest
       }
     }
 
     "fail if kid in the assertion is not found for the given client ID" in {
-      val resource = eServiceAudience
-
       mockInternalTokenGeneration(jwtConfig)
 
       (mockAuthorizationManagementService
@@ -113,16 +100,13 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
         Some(clientId.toString),
         validClientAssertion,
         clientAssertionType,
-        grantType,
-        resource
+        grantType
       ) ~> check {
         status shouldEqual StatusCodes.BadRequest
       }
     }
 
     "fail if the assertion is not signed with the public key corresponding to the kid" in {
-      val resource = eServiceAudience
-
       mockInternalTokenGeneration(jwtConfig)
       mockKeyRetrieve(clientKey.copy(key = anotherModelKey))
 
@@ -130,16 +114,13 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
         Some(clientId.toString),
         validClientAssertion,
         clientAssertionType,
-        grantType,
-        resource
+        grantType
       ) ~> check {
         status shouldEqual StatusCodes.BadRequest
       }
     }
 
     "succeed even if publish on queue fails" in {
-      val resource = eServiceAudience
-
       mockInternalTokenGeneration(jwtConfig)
       mockKeyRetrieve()
       mockClientRetrieve()
@@ -155,8 +136,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
         Some(clientId.toString),
         validClientAssertion,
         clientAssertionType,
-        grantType,
-        resource
+        grantType
       ) ~> check {
         status shouldEqual StatusCodes.OK
       }
@@ -166,8 +146,6 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
 
   "Consumer token generation" should {
     "succeed with correct request" in {
-      val resource = eServiceAudience
-
       mockInternalTokenGeneration(jwtConfig)
       mockKeyRetrieve()
       mockClientRetrieve()
@@ -181,8 +159,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
         Some(clientId.toString),
         validClientAssertion,
         clientAssertionType,
-        grantType,
-        resource
+        grantType
       ) ~> check {
         status shouldEqual StatusCodes.OK
         responseAs[ClientCredentialsResponse] shouldEqual expectedResponse
@@ -190,8 +167,6 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
     }
 
     "fail if purpose id is not assigned to the client" in {
-      val resource = eServiceAudience
-
       mockInternalTokenGeneration(jwtConfig)
       mockKeyRetrieve()
       mockClientRetrieve(activeClient.copy(purposes = Seq.empty))
@@ -200,16 +175,13 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
         Some(clientId.toString),
         validClientAssertion,
         clientAssertionType,
-        grantType,
-        resource
+        grantType
       ) ~> check {
         status shouldEqual StatusCodes.BadRequest
       }
     }
 
     "fail if Purpose is not active" in {
-      val resource = eServiceAudience
-
       mockInternalTokenGeneration(jwtConfig)
       mockKeyRetrieve()
       mockClientRetrieve(makeClient(purposeState = ClientComponentState.INACTIVE))
@@ -218,16 +190,13 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
         Some(clientId.toString),
         validClientAssertion,
         clientAssertionType,
-        grantType,
-        resource
+        grantType
       ) ~> check {
         status shouldEqual StatusCodes.BadRequest
       }
     }
 
     "fail if EService is not active" in {
-      val resource = eServiceAudience
-
       mockInternalTokenGeneration(jwtConfig)
       mockKeyRetrieve()
       mockClientRetrieve(makeClient(eServiceState = ClientComponentState.INACTIVE))
@@ -236,16 +205,13 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
         Some(clientId.toString),
         validClientAssertion,
         clientAssertionType,
-        grantType,
-        resource
+        grantType
       ) ~> check {
         status shouldEqual StatusCodes.BadRequest
       }
     }
 
     "fail if Agreement is not active" in {
-      val resource = eServiceAudience
-
       mockInternalTokenGeneration(jwtConfig)
       mockKeyRetrieve()
       mockClientRetrieve(makeClient(agreementState = ClientComponentState.INACTIVE))
@@ -254,21 +220,16 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
         Some(clientId.toString),
         validClientAssertion,
         clientAssertionType,
-        grantType,
-        resource
+        grantType
       ) ~> check {
         status shouldEqual StatusCodes.BadRequest
       }
     }
 
-//    TODO Implement this if resource implementation will not be reverted
-//    "fail if resource does not correspond to EService audience" in {}
   }
 
   "API token generation" should {
     "succeed with correct request" in {
-      val resource = interopAudience
-
       val apiClient = makeClient(kind = ClientKind.API).copy(purposes = Seq.empty)
 
       mockInternalTokenGeneration(jwtConfig)
@@ -281,22 +242,18 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
         ClientCredentialsResponse(
           generatedToken.serialized,
           TokenType.Bearer,
-          ApplicationConfiguration.interopTokenDuration
+          ApplicationConfiguration.generatedM2mJwtDuration
         )
 
       Get() ~> service.createToken(
         Some(clientId.toString),
         validClientAssertion,
         clientAssertionType,
-        grantType,
-        resource
+        grantType
       ) ~> check {
         status shouldEqual StatusCodes.OK
         responseAs[ClientCredentialsResponse] shouldEqual expectedResponse
       }
     }
-
-//    TODO Implement this if resource implementation will not be reverted
-//    "fail if resource does not correspond to Interop audience" in {}
   }
 }

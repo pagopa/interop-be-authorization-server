@@ -153,7 +153,7 @@ final case class AuthApiServiceImpl(
           purpose     <- client.purposes
             .find(_.purposeId == purposeUUID)
             .toFuture(PurposeNotFound(client.id, purposeUUID))
-          _  <- checkClientStates(purpose.states)
+          _           <- checkClientStates(purpose.states)
         } yield (purpose.states.eservice.audience, purpose.states.eservice.voucherLifespan)
       case ClientKind.API      =>
         Future.successful(

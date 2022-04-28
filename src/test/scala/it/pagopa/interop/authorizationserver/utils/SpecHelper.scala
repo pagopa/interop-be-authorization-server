@@ -43,7 +43,7 @@ trait SpecHelper { self: BaseSpec =>
         validClientAssertion,
         List(eServiceAudience),
         Map(PURPOSE_ID_CLAIM -> purposeId.toString),
-        ApplicationConfiguration.interopIdIssuer,
+        ApplicationConfiguration.generatedJwtIssuer,
         eServiceTokenDuration.toLong
       )
       .once()
@@ -54,10 +54,10 @@ trait SpecHelper { self: BaseSpec =>
       .generate(_: String, _: List[String], _: Map[String, String], _: String, _: Long))
       .expects(
         validClientAssertion,
-        List(interopAudience),
+        ApplicationConfiguration.generatedM2mJwtAudience.toList,
         Map(ORGANIZATION_ID_CLAIM -> consumerId.toString),
-        ApplicationConfiguration.interopIdIssuer,
-        ApplicationConfiguration.interopTokenDuration.toLong
+        ApplicationConfiguration.generatedJwtIssuer,
+        ApplicationConfiguration.generatedM2mJwtDuration.toLong
       )
       .once()
       .returns(Success(generatedToken))

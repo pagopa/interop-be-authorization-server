@@ -19,12 +19,12 @@ import scala.concurrent.ExecutionContext
 
 trait BaseSpec extends AnyWordSpecLike with SprayJsonSupport with DefaultJsonProtocol with MockFactory {
 
-  def clientAssertionValidator(interopAudience: String): ClientAssertionValidator = new DefaultClientAssertionValidator
-    with PublicKeysHolder {
-    var publicKeyset: Map[KID, SerializedKey]                                        = Map.empty
-    override protected val claimsVerifier: DefaultJWTClaimsVerifier[SecurityContext] =
-      getClaimsVerifier(audience = Set(interopAudience))
-  }
+  def clientAssertionValidator(clientAssertionAudience: String): ClientAssertionValidator =
+    new DefaultClientAssertionValidator with PublicKeysHolder {
+      var publicKeyset: Map[KID, SerializedKey]                                        = Map.empty
+      override protected val claimsVerifier: DefaultJWTClaimsVerifier[SecurityContext] =
+        getClaimsVerifier(audience = Set(clientAssertionAudience))
+    }
 
   val mockInteropTokenGenerator: InteropTokenGenerator                   = mock[InteropTokenGenerator]
   val mockAuthorizationManagementService: AuthorizationManagementService = mock[AuthorizationManagementService]
@@ -32,10 +32,12 @@ trait BaseSpec extends AnyWordSpecLike with SprayJsonSupport with DefaultJsonPro
 
   def service(implicit ec: ExecutionContext): AuthApiService = customService()
 
-  def customService(interopAudience: String = SpecData.interopAudience)(implicit ec: ExecutionContext): AuthApiService =
+  def customService(
+    clientAssertionAudience: String = SpecData.clientAssertionAudience
+  )(implicit ec: ExecutionContext): AuthApiService =
     AuthApiServiceImpl(
       authorizationManagementService = mockAuthorizationManagementService,
-      jwtValidator = clientAssertionValidator(interopAudience),
+      jwtValidator = clientAssertionValidator(clientAssertionAudience),
       interopTokenGenerator = mockInteropTokenGenerator,
       queueService = mockQueueService
     )
