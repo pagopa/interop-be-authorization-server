@@ -184,7 +184,7 @@ final case class AuthApiServiceImpl(
 
     queueService
       .send(jwtDetails)
-      .as(())
+      .void
       .recoverWith(ex =>
         Future.successful(
           logger.error(
