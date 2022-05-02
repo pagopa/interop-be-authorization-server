@@ -30,9 +30,10 @@ object Dependencies {
     lazy val authorizationManagement =
       namespace %% "interop-be-authorization-management-client" % authorizationManagementVersion
 
-    lazy val commons = namespace %% "interop-commons-utils" % commonsVersion
-    lazy val jwt     = namespace %% "interop-commons-jwt"   % commonsVersion
-    lazy val vault   = namespace %% "interop-commons-vault" % commonsVersion
+    lazy val commons      = namespace %% "interop-commons-utils"         % commonsVersion
+    lazy val jwt          = namespace %% "interop-commons-jwt"           % commonsVersion
+    lazy val queueManager = namespace %% "interop-commons-queue-manager" % commonsVersion
+    lazy val vault        = namespace %% "interop-commons-vault"         % commonsVersion
   }
 
   private[this] object cats {
@@ -108,6 +109,7 @@ object Dependencies {
       mustache.mustache              % Compile,
       pagopa.commons                 % Compile,
       pagopa.jwt                     % Compile,
+      pagopa.queueManager            % Compile,
       pagopa.authorizationManagement % Compile,
       pagopa.vault                   % Compile,
       akka.httpTestkit               % Test,
