@@ -8,6 +8,13 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.data.{NonEmptyList, Validated}
 import cats.implicits._
 import com.typesafe.scalalogging.{Logger, LoggerTakingImplicit}
+import it.pagopa.interop.authorizationmanagement.client.invoker.{ApiError => AuthorizationApiError}
+import it.pagopa.interop.authorizationmanagement.client.model.{
+  Client,
+  ClientComponentState,
+  ClientKind,
+  ClientStatesChain
+}
 import it.pagopa.interop.authorizationserver.api.AuthApiService
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
 import it.pagopa.interop.authorizationserver.error.AuthServerErrors._
@@ -18,14 +25,8 @@ import it.pagopa.interop.authorizationserver.service.{
   AuthorizationManagementService,
   QueueService
 }
-import it.pagopa.interop.authorizationmanagement.client.model.{
-  Client,
-  ClientComponentState,
-  ClientKind,
-  ClientStatesChain
-}
 import it.pagopa.interop.commons.jwt.errors.InvalidAccessTokenRequest
-import it.pagopa.interop.commons.jwt.model.{ClientAssertionChecker, RSA, Token, ValidClientAssertionRequest}
+import it.pagopa.interop.commons.jwt.model.{ClientAssertionChecker, Token, ValidClientAssertionRequest}
 import it.pagopa.interop.commons.jwt.service.{ClientAssertionValidator, InteropTokenGenerator}
 import it.pagopa.interop.commons.jwt.{JWTConfiguration, JWTInternalTokenConfig}
 import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
@@ -33,7 +34,6 @@ import it.pagopa.interop.commons.utils.TypeConversions._
 import it.pagopa.interop.commons.utils.errors.ComponentError
 import it.pagopa.interop.commons.utils.{BEARER, CORRELATION_ID_HEADER, ORGANIZATION_ID_CLAIM, PURPOSE_ID_CLAIM}
 import org.slf4j.LoggerFactory
-import it.pagopa.interop.authorizationmanagement.client.invoker.{ApiError => AuthorizationApiError}
 
 import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
@@ -76,13 +76,12 @@ final case class AuthApiServiceImpl(
       checker  <- getChecker.toFuture
       m2mToken <- interopTokenGenerator
         .generateInternalToken(
-          jwtAlgorithmType = RSA,
           subject = jwtConfig.subject,
           audience = jwtConfig.audience.toList,
           tokenIssuer = jwtConfig.issuer,
           secondsDuration = jwtConfig.durationInSeconds
         )
-        .toFuture
+
       m2mContexts = contexts.filter(_._1 == CORRELATION_ID_HEADER) :+ (BEARER -> m2mToken.serialized)
       clientUUID                <- checker.subject.toFutureUUID
       publicKey                 <- authorizationManagementService
@@ -107,7 +106,6 @@ final case class AuthApiServiceImpl(
           tokenIssuer = ApplicationConfiguration.generatedJwtIssuer,
           validityDurationInSeconds = tokenDuration.toLong
         )
-        .toFuture
       _                         <- sendToQueue(token, client, purposeId, checker.kid)
     } yield ClientCredentialsResponse(access_token = token.serialized, token_type = Bearer, expires_in = tokenDuration)
 

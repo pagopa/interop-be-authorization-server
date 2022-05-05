@@ -10,8 +10,6 @@ object ApplicationConfiguration {
 
   val authorizationManagementURL: String = config.getString("services.authorization-management")
 
-  val rsaPrivatePath: String = config.getString("authorization-server.rsa-private-path")
-
   val generatedJwtIssuer: String           = config.getString("authorization-server.generated-jwt.issuer")
   val generatedM2mJwtAudience: Set[String] =
     config.getString("authorization-server.generated-jwt.m2m-audience").split(",").toSet.filter(_.nonEmpty)
@@ -22,6 +20,12 @@ object ApplicationConfiguration {
     config.getString("authorization-server.client-assertion-audience").split(",").toSet.filter(_.nonEmpty)
 
   val jwtQueueUrl: String = config.getString("authorization-server.jwt-queue-url")
+
+  val rsaKeysIdentifiers: Set[String] =
+    config.getString("authorization-server.rsa-keys-identifiers").split(",").toSet.filter(_.nonEmpty)
+
+  val ecKeysIdentifiers: Set[String] =
+    config.getString("authorization-server.ec-keys-identifiers").split(",").toSet.filter(_.nonEmpty)
 
   require(generatedM2mJwtAudience.nonEmpty, "Generated JWT Audience cannot be empty")
   require(clientAssertionAudience.nonEmpty, "Client Assertion Audience cannot be empty")

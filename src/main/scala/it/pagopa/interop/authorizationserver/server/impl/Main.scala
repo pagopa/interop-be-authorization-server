@@ -8,6 +8,10 @@ import akka.http.scaladsl.server.directives.SecurityDirectives
 import akka.management.scaladsl.AkkaManagement
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
+import it.pagopa.interop.authorizationmanagement.client.api.{
+  ClientApi => AuthorizationClientApi,
+  KeyApi => AuthorizationKeyApi
+}
 import it.pagopa.interop.authorizationserver.api._
 import it.pagopa.interop.authorizationserver.api.impl.{
   AuthApiMarshallerImpl,
@@ -21,24 +25,21 @@ import it.pagopa.interop.authorizationserver.common.system.{classicActorSystem, 
 import it.pagopa.interop.authorizationserver.server.Controller
 import it.pagopa.interop.authorizationserver.service._
 import it.pagopa.interop.authorizationserver.service.impl._
-import it.pagopa.interop.authorizationmanagement.client.api.{
-  ClientApi => AuthorizationClientApi,
-  KeyApi => AuthorizationKeyApi
-}
 import it.pagopa.interop.commons.jwt._
+import it.pagopa.interop.commons.jwt.service.ClientAssertionValidator
 import it.pagopa.interop.commons.jwt.service.impl.{
   DefaultClientAssertionValidator,
   DefaultInteropTokenGenerator,
   getClaimsVerifier
 }
-import it.pagopa.interop.commons.jwt.service.{ClientAssertionValidator, InteropTokenGenerator}
 import it.pagopa.interop.commons.queue.QueueConfiguration
 import it.pagopa.interop.commons.utils.AkkaUtils.PassThroughAuthenticator
 import it.pagopa.interop.commons.utils.TypeConversions.TryOps
 import it.pagopa.interop.commons.utils.errors.GenericComponentErrors.ValidationRequestError
 import it.pagopa.interop.commons.utils.{CORSSupport, OpenapiUtils}
-import it.pagopa.interop.commons.vault.service.VaultService
-import it.pagopa.interop.commons.vault.service.impl.{DefaultVaultClient, DefaultVaultService}
+import it.pagopa.interop.commons.vault.VaultClientConfiguration
+import it.pagopa.interop.commons.vault.service.impl.{DefaultVaultClient, DefaultVaultService, VaultTransitServiceImpl}
+import it.pagopa.interop.commons.vault.service.{VaultService, VaultTransitService}
 import kamon.Kamon
 
 import scala.concurrent.Future
@@ -67,39 +68,41 @@ trait VaultServiceDependency {
 
 object Main extends App with CORSSupport with VaultServiceDependency with AuthorizationManagementDependency {
 
-  val dependenciesLoaded: Future[(ClientAssertionValidator, InteropTokenGenerator)] = for {
+  val dependenciesLoaded: Future[ClientAssertionValidator] = for {
     keyset <- JWTConfiguration.jwtReader.loadKeyset().toFuture
     clientAssertionValidator = new DefaultClientAssertionValidator with PublicKeysHolder {
       var publicKeyset: Map[KID, SerializedKey]                                        = keyset
       override protected val claimsVerifier: DefaultJWTClaimsVerifier[SecurityContext] =
         getClaimsVerifier(audience = ApplicationConfiguration.clientAssertionAudience)
     }
-    interopTokenGenerator    = new DefaultInteropTokenGenerator with PrivateKeysHolder {
-      override val RSAPrivateKeyset: Map[KID, SerializedKey] =
-        vaultService.readBase64EncodedData(ApplicationConfiguration.rsaPrivatePath)
-      override val ECPrivateKeyset: Map[KID, SerializedKey]  =
-        Map.empty
-    }
-  } yield (clientAssertionValidator, interopTokenGenerator)
+
+  } yield clientAssertionValidator
 
   dependenciesLoaded.transformWith {
-    case Success((clientAssertionValidator, interopTokenGenerator)) =>
-      launchApp(clientAssertionValidator, interopTokenGenerator)
-    case Failure(ex)                                                =>
+    case Success(clientAssertionValidator) =>
+      launchApp(clientAssertionValidator)
+    case Failure(ex)                       =>
       classicActorSystem.log.error(s"Startup error: ${ex.getMessage}")
       classicActorSystem.log.error(s"${ex.getStackTrace.mkString("\n")}")
       CoordinatedShutdown(classicActorSystem).run(StartupErrorShutdown)
   }
 
-  private def launchApp(
-    clientAssertionValidator: ClientAssertionValidator,
-    interopTokenGenerator: InteropTokenGenerator
-  ): Future[Http.ServerBinding] = {
+  private def launchApp(clientAssertionValidator: ClientAssertionValidator): Future[Http.ServerBinding] = {
     Kamon.init()
 
     locally {
       AkkaManagement.get(classicActorSystem).start()
     }
+
+    val vaultService: VaultTransitService = new VaultTransitServiceImpl(VaultClientConfiguration.vaultConfig)
+
+    val interopTokenGenerator = new DefaultInteropTokenGenerator(
+      vaultService,
+      new PrivateKeysKidHolder {
+        override val RSAPrivateKeyset: Set[KID] = ApplicationConfiguration.rsaKeysIdentifiers
+        override val ECPrivateKeyset: Set[KID]  = ApplicationConfiguration.ecKeysIdentifiers
+      }
+    )
 
     val queueService = QueueServiceImpl(QueueConfiguration.queueAccountInfo, ApplicationConfiguration.jwtQueueUrl)
 
