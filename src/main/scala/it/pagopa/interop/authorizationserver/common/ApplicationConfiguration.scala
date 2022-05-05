@@ -29,4 +29,9 @@ object ApplicationConfiguration {
 
   require(generatedM2mJwtAudience.nonEmpty, "Generated JWT Audience cannot be empty")
   require(clientAssertionAudience.nonEmpty, "Client Assertion Audience cannot be empty")
+  require(
+    rsaKeysIdentifiers.nonEmpty || ecKeysIdentifiers.nonEmpty,
+    "You MUST provide at least one signing key (either RSA or EC)"
+  )
+
 }
