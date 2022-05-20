@@ -33,7 +33,6 @@ import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLo
 import it.pagopa.interop.commons.utils.TypeConversions._
 import it.pagopa.interop.commons.utils.errors.ComponentError
 import it.pagopa.interop.commons.utils.{BEARER, CORRELATION_ID_HEADER, ORGANIZATION_ID_CLAIM, PURPOSE_ID_CLAIM}
-import org.slf4j.LoggerFactory
 
 import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
@@ -47,8 +46,7 @@ final case class AuthApiServiceImpl(
 )(implicit ec: ExecutionContext)
     extends AuthApiService {
 
-  val logger: LoggerTakingImplicit[ContextFieldsToLog] =
-    Logger.takingImplicit[ContextFieldsToLog](LoggerFactory.getLogger(this.getClass))
+  val logger: LoggerTakingImplicit[ContextFieldsToLog] = Logger.takingImplicit[ContextFieldsToLog](this.getClass)
 
   lazy val jwtConfig: JWTInternalTokenConfig = JWTConfiguration.jwtInternalTokenConfig
 
@@ -112,10 +110,10 @@ final case class AuthApiServiceImpl(
     onComplete(result) {
       case Success(token)              => createToken200(token)
       case Failure(ex: ComponentError) =>
-        logger.error(s"Error while creating a token - ${ex.getMessage}")
+        logger.error(s"Error while creating a token", ex)
         createToken400(problemOf(StatusCodes.BadRequest, CreateTokenRequestError))
       case Failure(ex)                 =>
-        logger.error(s"Error while creating a token for this request - ${ex.getMessage}")
+        logger.error(s"Error while creating a token for this request", ex)
         complete(StatusCodes.InternalServerError, problemOf(StatusCodes.InternalServerError, CreateTokenRequestError))
     }
   }
@@ -185,9 +183,7 @@ final case class AuthApiServiceImpl(
       .void
       .recoverWith(ex =>
         Future.successful(
-          logger.error(
-            s"Unable to save JWT details to queue. Details: ${jwtDetails.readableString} Reason: ${ex.getMessage}"
-          )
+          logger.error(s"Unable to save JWT details to queue. Details: ${jwtDetails.readableString}", ex)
         )
       )
   }

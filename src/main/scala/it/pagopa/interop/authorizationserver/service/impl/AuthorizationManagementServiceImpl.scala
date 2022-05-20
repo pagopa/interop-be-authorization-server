@@ -44,10 +44,10 @@ class AuthorizationManagementServiceImpl(invoker: AuthorizationManagementInvoker
     (context, logger, msg) =>
       {
         case ex @ ApiError(code, message, _, _, _) if code == 404 =>
-          logger.error(s"$msg. code > $code - message > $message - ${ex.getMessage}")(context)
+          logger.error(s"$msg. code > $code - message > $message", ex)(context)
           Future.failed(GenericComponentErrors.ResourceNotFoundError(resource))
         case ex                                                   =>
-          logger.error(s"$msg. Error: ${ex.getMessage}")(context)
+          logger.error(s"$msg", ex)(context)
           Future.failed(ex)
       }
   }
