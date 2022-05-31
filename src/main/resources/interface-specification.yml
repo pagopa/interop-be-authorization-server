@@ -67,6 +67,7 @@ paths:
                 $ref: '#/components/schemas/Problem'
   /status:
     get:
+      security: []
       summary: Returns the application status
       description: Returns the application status
       operationId: get_status
