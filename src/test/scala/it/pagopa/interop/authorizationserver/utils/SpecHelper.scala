@@ -36,26 +36,28 @@ trait SpecHelper { self: BaseSpec =>
 
   def mockConsumerTokenGeneration() =
     (mockInteropTokenGenerator
-      .generate(_: String, _: List[String], _: Map[String, String], _: String, _: Long))
+      .generate(_: String, _: List[String], _: Map[String, String], _: String, _: Long, _: Boolean))
       .expects(
         validClientAssertion,
         List(eServiceAudience),
         Map(PURPOSE_ID_CLAIM -> purposeId.toString),
         ApplicationConfiguration.generatedJwtIssuer,
-        eServiceTokenDuration.toLong
+        eServiceTokenDuration.toLong,
+        false
       )
       .once()
       .returns(Future.successful(generatedToken))
 
   def mockApiTokenGeneration() =
     (mockInteropTokenGenerator
-      .generate(_: String, _: List[String], _: Map[String, String], _: String, _: Long))
+      .generate(_: String, _: List[String], _: Map[String, String], _: String, _: Long, _: Boolean))
       .expects(
         validClientAssertion,
         ApplicationConfiguration.generatedM2mJwtAudience.toList,
         Map(ORGANIZATION_ID_CLAIM -> consumerId.toString),
         ApplicationConfiguration.generatedJwtIssuer,
-        ApplicationConfiguration.generatedM2mJwtDuration.toLong
+        ApplicationConfiguration.generatedM2mJwtDuration.toLong,
+        true
       )
       .once()
       .returns(Future.successful(generatedToken))

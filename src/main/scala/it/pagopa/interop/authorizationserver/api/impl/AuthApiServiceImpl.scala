@@ -102,7 +102,8 @@ final case class AuthApiServiceImpl(
           audience = audience.toList,
           customClaims = customClaims,
           tokenIssuer = ApplicationConfiguration.generatedJwtIssuer,
-          validityDurationInSeconds = tokenDuration.toLong
+          validityDurationInSeconds = tokenDuration.toLong,
+          isM2M = client.kind == ClientKind.API
         )
       _                         <- sendToQueue(token, client, purposeId, checker.kid)
     } yield ClientCredentialsResponse(access_token = token.serialized, token_type = Bearer, expires_in = tokenDuration)
