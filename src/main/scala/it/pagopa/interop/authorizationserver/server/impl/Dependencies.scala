@@ -1,8 +1,11 @@
 package it.pagopa.interop.authorizationserver.server.impl
 
+import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.complete
+import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.SecurityDirectives
+import com.atlassian.oai.validator.report.ValidationReport
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import it.pagopa.interop.authorizationmanagement.client.api.{
@@ -27,19 +30,15 @@ import it.pagopa.interop.commons.jwt.service.impl.{
   DefaultInteropTokenGenerator,
   getClaimsVerifier
 }
-import it.pagopa.interop.commons.queue.QueueConfiguration
 import it.pagopa.interop.commons.utils.AkkaUtils.PassThroughAuthenticator
+import it.pagopa.interop.commons.utils.OpenapiUtils
 import it.pagopa.interop.commons.utils.TypeConversions.TryOps
 import it.pagopa.interop.commons.utils.errors.GenericComponentErrors.ValidationRequestError
-import it.pagopa.interop.commons.utils.{OpenapiUtils}
 import it.pagopa.interop.commons.vault.VaultClientConfiguration
 import it.pagopa.interop.commons.vault.service.impl.{DefaultVaultClient, DefaultVaultService, VaultTransitServiceImpl}
 import it.pagopa.interop.commons.vault.service.{VaultService, VaultTransitService}
-import scala.concurrent.Future
-import com.atlassian.oai.validator.report.ValidationReport
-import akka.http.scaladsl.server.Route
-import scala.concurrent.ExecutionContext
-import akka.actor.typed.ActorSystem
+
+import scala.concurrent.{ExecutionContext, Future}
 
 trait Dependencies {
 
@@ -82,7 +81,7 @@ trait Dependencies {
   )
 
   private def queueService()(implicit ec: ExecutionContext): QueueServiceImpl =
-    QueueServiceImpl(QueueConfiguration.queueAccountInfo, ApplicationConfiguration.jwtQueueUrl)
+    QueueServiceImpl(ApplicationConfiguration.jwtQueueUrl)
 
   private def authApiService(
     clientAssertionValidator: ClientAssertionValidator
