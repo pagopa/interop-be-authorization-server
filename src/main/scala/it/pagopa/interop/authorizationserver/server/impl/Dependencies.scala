@@ -30,13 +30,12 @@ import it.pagopa.interop.commons.jwt.service.impl.{
   DefaultInteropTokenGenerator,
   getClaimsVerifier
 }
+import it.pagopa.interop.commons.signer.service.SignerService
+import it.pagopa.interop.commons.signer.service.impl.KMSSignerServiceImpl
 import it.pagopa.interop.commons.utils.AkkaUtils.PassThroughAuthenticator
 import it.pagopa.interop.commons.utils.OpenapiUtils
 import it.pagopa.interop.commons.utils.TypeConversions.TryOps
 import it.pagopa.interop.commons.utils.errors.GenericComponentErrors.ValidationRequestError
-import it.pagopa.interop.commons.vault.VaultClientConfiguration
-import it.pagopa.interop.commons.vault.service.impl.{DefaultVaultClient, DefaultVaultService, VaultTransitServiceImpl}
-import it.pagopa.interop.commons.vault.service.{VaultService, VaultTransitService}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -52,10 +51,8 @@ trait Dependencies {
       AuthorizationClientApi(ApplicationConfiguration.authorizationManagementURL)
     )
 
-  def vaultService(): VaultService = new DefaultVaultService with DefaultVaultClient.DefaultClientInstance
-
-  private def vaultTransitService()(implicit actorSystem: ActorSystem[_]): VaultTransitService =
-    new VaultTransitServiceImpl(VaultClientConfiguration.vaultConfig)(actorSystem.classicSystem)
+  private def signerService()(implicit actorSystem: ActorSystem[_]): SignerService =
+    KMSSignerServiceImpl()(actorSystem.classicSystem)
 
   def getClientAssertionValidator()(implicit ec: ExecutionContext): Future[ClientAssertionValidator] =
     JWTConfiguration.jwtReader
@@ -73,7 +70,7 @@ trait Dependencies {
     ec: ExecutionContext,
     actorSystem: ActorSystem[_]
   ): DefaultInteropTokenGenerator = new DefaultInteropTokenGenerator(
-    vaultTransitService(),
+    signerService(),
     new PrivateKeysKidHolder {
       override val RSAPrivateKeyset: Set[KID] = ApplicationConfiguration.rsaKeysIdentifiers
       override val ECPrivateKeyset: Set[KID]  = ApplicationConfiguration.ecKeysIdentifiers
