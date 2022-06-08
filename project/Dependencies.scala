@@ -33,7 +33,7 @@ object Dependencies {
     lazy val commons      = namespace %% "interop-commons-utils"         % commonsVersion
     lazy val jwt          = namespace %% "interop-commons-jwt"           % commonsVersion
     lazy val queueManager = namespace %% "interop-commons-queue-manager" % commonsVersion
-    lazy val vault        = namespace %% "interop-commons-vault"         % commonsVersion
+    lazy val signer       = namespace %% "interop-commons-signer"        % commonsVersion
   }
 
   private[this] object cats {
@@ -111,7 +111,7 @@ object Dependencies {
       pagopa.jwt                     % Compile,
       pagopa.queueManager            % Compile,
       pagopa.authorizationManagement % Compile,
-      pagopa.vault                   % Compile,
+      pagopa.signer                  % Compile,
       akka.httpTestkit               % Test,
       akka.streamTestkit             % Test,
       akka.testkit                   % Test,
