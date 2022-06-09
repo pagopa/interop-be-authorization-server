@@ -34,6 +34,7 @@ import it.pagopa.interop.commons.utils.TypeConversions._
 import it.pagopa.interop.commons.utils.errors.ComponentError
 import it.pagopa.interop.commons.utils.{BEARER, CORRELATION_ID_HEADER, ORGANIZATION_ID_CLAIM, PURPOSE_ID_CLAIM}
 
+import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
@@ -79,24 +80,11 @@ final case class AuthApiServiceImpl(
           tokenIssuer = jwtConfig.issuer,
           secondsDuration = jwtConfig.durationInSeconds
         )
-
       m2mContexts = contexts.filter(_._1 == CORRELATION_ID_HEADER) :+ (BEARER -> m2mToken.serialized)
       clientUUID <- checker.subject.toFutureUUID
-      publicKey  <- authorizationManagementService
-        .getKey(clientUUID, checker.kid)(m2mContexts)
-        .map(k => AuthorizationManagementInvoker.serializeKey(k.key))
-        .recoverWith {
-          case err: AuthorizationApiError[_] if err.code == 404 => Future.failed(KeyNotFound(err.getMessage))
-        }
-      _          <- checker
-        .verify(publicKey)
-        .toFuture
-        .recoverWith(ex => Future.failed(InvalidAssertionSignature(clientUUID, checker.kid, ex.getMessage)))
+      _          <- verifyClientAssertion(clientUUID, checker)(m2mContexts)
       client     <- authorizationManagementService.getClient(clientUUID)(m2mContexts)
-      token      <- client.kind match {
-        case ClientKind.CONSUMER => generateConsumerToken(client, checker, clientAssertion)
-        case ClientKind.API      => generateApiToken(client, clientAssertion)
-      }
+      token      <- generateToken(client, checker, clientAssertion)
     } yield ClientCredentialsResponse(
       access_token = token.serialized,
       token_type = Bearer,
@@ -113,6 +101,14 @@ final case class AuthApiServiceImpl(
         complete(StatusCodes.InternalServerError, problemOf(StatusCodes.InternalServerError, CreateTokenRequestError))
     }
   }
+
+  private def generateToken(client: Client, checker: ClientAssertionChecker, clientAssertion: String)(implicit
+    contexts: Seq[(String, String)]
+  ): Future[Token] =
+    client.kind match {
+      case ClientKind.CONSUMER => generateConsumerToken(client, checker, clientAssertion)
+      case ClientKind.API      => generateApiToken(client, clientAssertion)
+    }
 
   private def generateConsumerToken(client: Client, checker: ClientAssertionChecker, clientAssertion: String)(implicit
     context: Seq[(String, String)]
@@ -173,6 +169,25 @@ final case class AuthApiServiceImpl(
 
     checkClientStates(purpose.states).as((purpose.states.eservice.audience, purpose.states.eservice.voucherLifespan))
   }
+
+  private def getClientKey(clientId: UUID, kid: String)(m2mContexts: Seq[(String, String)]): Future[String] =
+    authorizationManagementService
+      .getKey(clientId, kid)(m2mContexts)
+      .map(k => AuthorizationManagementInvoker.serializeKey(k.key))
+      .recoverWith {
+        case err: AuthorizationApiError[_] if err.code == 404 => Future.failed(KeyNotFound(err.getMessage))
+      }
+
+  private def verifyClientAssertion(clientId: UUID, checker: ClientAssertionChecker)(
+    m2mContexts: Seq[(String, String)]
+  ): Future[Unit] =
+    for {
+      publicKey <- getClientKey(clientId, checker.kid)(m2mContexts)
+      _         <- checker
+        .verify(publicKey)
+        .toFuture
+        .recoverWith(ex => Future.failed(InvalidAssertionSignature(clientId, checker.kid, ex.getMessage)))
+    } yield ()
 
   private def sendToQueue(
     token: Token,
