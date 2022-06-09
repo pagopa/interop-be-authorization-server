@@ -1,18 +1,46 @@
 package it.pagopa.interop.authorizationserver.utils
 
 import it.pagopa.interop.authorizationmanagement.client.model._
-import it.pagopa.interop.authorizationserver.model.JWTDetailsMessage
+import it.pagopa.interop.authorizationserver.model.{ClientAssertionDetails, JWTDetailsMessage}
+import it.pagopa.interop.commons.jwt.JWTConfiguration
 import it.pagopa.interop.commons.jwt.model.Token
 
 import java.time.OffsetDateTime
 import java.util.UUID
 
 object SpecData {
-  val internalToken: Token  = Token(serialized = "internal-jwt", jti = "internal-jti", iat = 0, exp = 100, nbf = 0)
-  val generatedToken: Token = Token(serialized = "generated-jwt", jti = "qwerty", iat = 0, exp = 100, nbf = 0)
+  val internalToken: Token  = Token(
+    serialized = "internal-jwt",
+    jti = "internal-jti",
+    iat = 0,
+    exp = 100,
+    nbf = 0,
+    expIn = JWTConfiguration.jwtInternalTokenConfig.durationInSeconds,
+    alg = "alg",
+    kid = "kid",
+    aud = List("aud"),
+    sub = "sub",
+    iss = "iss"
+  )
+  val generatedToken: Token = Token(
+    serialized = "generated-jwt",
+    jti = "qwerty",
+    iat = 0,
+    exp = 100,
+    nbf = 0,
+    expIn = 100,
+    alg = "alg",
+    kid = "kid",
+    aud = List("aud"),
+    sub = "sub",
+    iss = "iss"
+  )
 
-  val consumerId: UUID = UUID.randomUUID()
-  val eServiceId: UUID = UUID.randomUUID()
+  val consumerId: UUID       = UUID.randomUUID()
+  val eServiceId: UUID       = UUID.randomUUID()
+  val descriptorId: UUID     = UUID.randomUUID()
+  val agreementId: UUID      = UUID.randomUUID()
+  val purposeVersionId: UUID = UUID.randomUUID()
 
   val clientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
   val grantType           = "client_credentials"
@@ -20,15 +48,19 @@ object SpecData {
   // These values have been used to generate test tokens.
   //   Any change to them would probably require to re-generate tokens and keys.
   //   Do not change these values if you are not sure
-  val clientId: UUID          = UUID.fromString("3da2c955-fcae-457f-926f-6dc41b8f95a9")
-  val purposeId: UUID         = UUID.fromString("b540a415-f65d-4270-9bad-7b789d124176")
-  val kid                     = "Kd3WRADi5yjC5y7Ux73Lnk9cvsL5hMHplUuq5yKsBMg"
-  val clientAssertionAudience = "test.interop.pagopa.it"
-  val validPublicKey          =
+  val clientId: UUID           = UUID.fromString("3da2c955-fcae-457f-926f-6dc41b8f95a9")
+  val purposeId: UUID          = UUID.fromString("b540a415-f65d-4270-9bad-7b789d124176")
+  val clientAssertionJti       = "8e0ad9b2-8788-4581-a0f5-d326018b9c3a"
+  val clientAssertionKid       = "Kd3WRADi5yjC5y7Ux73Lnk9cvsL5hMHplUuq5yKsBMg"
+  val clientAssertionIssuedAt  = 1650621859L
+  val clientAssertionExpiresAt = 4102354800L
+  val clientAssertionAlgorithm = "RS256"
+  val clientAssertionAudience  = "test.interop.pagopa.it"
+  val validPublicKey           =
     "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUFxQ0kxRENEWE9VaWtZbTJhdVFWNwpDcmdJbjNyM2FQeE1wMFdiTjNiamZBZFNsc3AzR1o0dUJVK3F5SGVQNUF0RVZxVW9ZaUNRaForcFo3T1F5bUxQCllibHVIK3h2dWpBVUxVS3VOWi85RlhtQXU4S2VMV09TUGhDWDFkeUhSRFhJZit3QWZzZVZxU2VLTElzeUhqcTkKWXF3WUFONWYvTGdzVlA4UUpLdnhZSEtXWW5hRTVKa1lESkIwT25hZjU0U1BWRU9PNUxqczJ0bDAwLzBNeTlvSApwWjV6c2dpcjRoSlZvNEJGb3hPSzhlcTQxTzJGYlpXQWlIbTBvbFpMeG0vU3dRbXNWNGpETmNQQis4ZE1UdFFXCjg0dGtYNUZyOEpwbFRMZkxUSm1FNGJTcTJUZnAvb2czeGNxM0dpeDZGVm56RWNIMmZkbXk3STgyR3J6dURJOWIKZndJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg=="
-  val validClientAssertion    =
+  val validClientAssertion     =
     "eyJraWQiOiJLZDNXUkFEaTV5akM1eTdVeDczTG5rOWN2c0w1aE1IcGxVdXE1eUtzQk1nIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiIzZGEyYzk1NS1mY2FlLTQ1N2YtOTI2Zi02ZGM0MWI4Zjk1YTkiLCJhdWQiOiJ0ZXN0LmludGVyb3AucGFnb3BhLml0IiwibmJmIjoxNjUwNjIxODU5LCJpc3MiOiIzZGEyYzk1NS1mY2FlLTQ1N2YtOTI2Zi02ZGM0MWI4Zjk1YTkiLCJwdXJwb3NlSWQiOiJiNTQwYTQxNS1mNjVkLTQyNzAtOWJhZC03Yjc4OWQxMjQxNzYiLCJleHAiOjQxMDIzNTQ4MDAsImlhdCI6MTY1MDYyMTg1OSwianRpIjoiOGUwYWQ5YjItODc4OC00NTgxLWEwZjUtZDMyNjAxOGI5YzNhIn0.htnYZhRHcSZUvPYLS1bEgidjymZJJ4hj0FudC374oFupjdIF2xVVW9DZrFYaeiUKr9rANCrUkSmRHKeQcQ0OofJI_dha2v7C6DdTLkiMhAr6imGQEwU3vu75bdnLcOmVeq4KKAmDA6YW6ApKpd5rgNjwzfNEVBsYFW2e0v85ZaovQO36Cr8jjC04kMV8GiHA6Jonu9TfW7Vz7tVayOaI6Eg1CnCPa2lqRM30OJG03GwmtCSWlkOTPDqdpF1GI71xrg9wbczCmw5BvzBRISHpwPluqPOpxqn6Nf9Xo8DNHDaE8ZfH48Uy1T0qPsrH0Awsh8PYXgGXlp12tZbLszhaaQ"
-  val modelKey: Key           = Key(
+  val modelKey: Key            = Key(
     kty = "RSA",
     keyOps = None,
     use = Some("sig"),
@@ -85,12 +117,18 @@ object SpecData {
           id = UUID.randomUUID(),
           eservice = ClientEServiceDetails(
             eserviceId = eServiceId,
+            descriptorId = descriptorId,
             state = eServiceState,
             audience = Seq(eServiceAudience),
             voucherLifespan = eServiceTokenDuration
           ),
-          agreement = ClientAgreementDetails(eserviceId = eServiceId, consumerId = consumerId, state = agreementState),
-          purpose = ClientPurposeDetails(purposeId = purposeId, state = purposeState)
+          agreement = ClientAgreementDetails(
+            eserviceId = eServiceId,
+            consumerId = consumerId,
+            agreementId = agreementId,
+            state = agreementState
+          ),
+          purpose = ClientPurposeDetails(purposeId = purposeId, versionId = purposeVersionId, state = purposeState)
         )
       )
     ),
@@ -106,14 +144,32 @@ object SpecData {
   )
 
   val expectedQueueMessage: JWTDetailsMessage = JWTDetailsMessage(
-    jti = generatedToken.jti,
-    iat = generatedToken.iat,
-    exp = generatedToken.exp,
-    nbf = generatedToken.nbf,
-    organizationId = consumerId.toString,
+    jwtId = generatedToken.jti,
+    issuedAt = generatedToken.iat * 1000,
     clientId = clientId.toString,
-    purposeId = Some(purposeId.toString),
-    kid = kid
+    organizationId = consumerId.toString,
+    agreementId = agreementId.toString,
+    eserviceId = eServiceId.toString,
+    descriptorId = descriptorId.toString,
+    purposeId = purposeId.toString,
+    purposeVersionId = purposeVersionId.toString,
+    algorithm = generatedToken.alg,
+    keyId = generatedToken.kid,
+    audience = generatedToken.aud.mkString(","),
+    subject = generatedToken.sub,
+    notBefore = generatedToken.nbf * 1000,
+    expirationTime = generatedToken.exp * 1000,
+    issuer = generatedToken.iss,
+    clientAssertion = ClientAssertionDetails(
+      jwtId = clientAssertionJti,
+      issuedAt = clientAssertionIssuedAt * 1000,
+      algorithm = clientAssertionAlgorithm,
+      keyId = clientAssertionKid,
+      issuer = clientId.toString,
+      subject = clientId.toString,
+      audience = clientAssertionAudience,
+      expirationTime = clientAssertionExpiresAt * 1000
+    )
   )
 
 }

@@ -9,17 +9,17 @@ import cats.data.{NonEmptyList, Validated}
 import cats.implicits._
 import com.typesafe.scalalogging.{Logger, LoggerTakingImplicit}
 import it.pagopa.interop.authorizationmanagement.client.invoker.{ApiError => AuthorizationApiError}
-import it.pagopa.interop.authorizationmanagement.client.model.{
-  Client,
-  ClientComponentState,
-  ClientKind,
-  ClientStatesChain
-}
+import it.pagopa.interop.authorizationmanagement.client.model._
 import it.pagopa.interop.authorizationserver.api.AuthApiService
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
 import it.pagopa.interop.authorizationserver.error.AuthServerErrors._
 import it.pagopa.interop.authorizationserver.model.TokenType.Bearer
-import it.pagopa.interop.authorizationserver.model.{ClientCredentialsResponse, JWTDetailsMessage, Problem}
+import it.pagopa.interop.authorizationserver.model.{
+  ClientAssertionDetails,
+  ClientCredentialsResponse,
+  JWTDetailsMessage,
+  Problem
+}
 import it.pagopa.interop.authorizationserver.service.{
   AuthorizationManagementInvoker,
   AuthorizationManagementService,
@@ -34,8 +34,8 @@ import it.pagopa.interop.commons.utils.TypeConversions._
 import it.pagopa.interop.commons.utils.errors.ComponentError
 import it.pagopa.interop.commons.utils.{BEARER, CORRELATION_ID_HEADER, ORGANIZATION_ID_CLAIM, PURPOSE_ID_CLAIM}
 
-import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 final case class AuthApiServiceImpl(
@@ -81,32 +81,27 @@ final case class AuthApiServiceImpl(
         )
 
       m2mContexts = contexts.filter(_._1 == CORRELATION_ID_HEADER) :+ (BEARER -> m2mToken.serialized)
-      clientUUID                <- checker.subject.toFutureUUID
-      publicKey                 <- authorizationManagementService
+      clientUUID <- checker.subject.toFutureUUID
+      publicKey  <- authorizationManagementService
         .getKey(clientUUID, checker.kid)(m2mContexts)
         .map(k => AuthorizationManagementInvoker.serializeKey(k.key))
         .recoverWith {
           case err: AuthorizationApiError[_] if err.code == 404 => Future.failed(KeyNotFound(err.getMessage))
         }
-      _                         <- checker
+      _          <- checker
         .verify(publicKey)
         .toFuture
         .recoverWith(ex => Future.failed(InvalidAssertionSignature(clientUUID, checker.kid, ex.getMessage)))
-      purposeId                 <- checker.purposeId.traverse(_.toFutureUUID)
-      client                    <- authorizationManagementService.getClient(clientUUID)(m2mContexts)
-      (audience, tokenDuration) <- checkClientValidity(client, purposeId)
-      customClaims              <- getCustomClaims(client, purposeId)
-      token                     <- interopTokenGenerator
-        .generate(
-          clientAssertion = clientAssertion,
-          audience = audience.toList,
-          customClaims = customClaims,
-          tokenIssuer = ApplicationConfiguration.generatedJwtIssuer,
-          validityDurationInSeconds = tokenDuration.toLong,
-          isM2M = client.kind == ClientKind.API
-        )
-      _                         <- sendToQueue(token, client, purposeId, checker.kid)
-    } yield ClientCredentialsResponse(access_token = token.serialized, token_type = Bearer, expires_in = tokenDuration)
+      client     <- authorizationManagementService.getClient(clientUUID)(m2mContexts)
+      token      <- client.kind match {
+        case ClientKind.CONSUMER => generateConsumerToken(client, checker, clientAssertion)
+        case ClientKind.API      => generateApiToken(client, clientAssertion)
+      }
+    } yield ClientCredentialsResponse(
+      access_token = token.serialized,
+      token_type = Bearer,
+      expires_in = token.expIn.toInt
+    )
 
     onComplete(result) {
       case Success(token)              => createToken200(token)
@@ -119,7 +114,40 @@ final case class AuthApiServiceImpl(
     }
   }
 
-  private def checkClientValidity(client: Client, purposeId: Option[UUID]): Future[(Seq[String], Int)] = {
+  private def generateConsumerToken(client: Client, checker: ClientAssertionChecker, clientAssertion: String)(implicit
+    context: Seq[(String, String)]
+  ): Future[Token] = for {
+    purposeId                 <- checker.purposeId.toFuture(PurposeIdNotProvided)
+    purposeUuid               <- purposeId.toFutureUUID
+    purpose                   <- client.purposes
+      .find(_.purposeId == purposeUuid)
+      .toFuture(PurposeNotFound(client.id, purposeUuid))
+    (audience, tokenDuration) <- checkConsumerClientValidity(client, purpose)
+    customClaims = Map(PURPOSE_ID_CLAIM -> purposeId)
+    token <- interopTokenGenerator
+      .generate(
+        clientAssertion = clientAssertion,
+        audience = audience.toList,
+        customClaims = customClaims,
+        tokenIssuer = ApplicationConfiguration.generatedJwtIssuer,
+        validityDurationInSeconds = tokenDuration.toLong,
+        isM2M = false
+      )
+    _     <- sendToQueue(token, client, purpose, checker)
+  } yield token
+
+  private def generateApiToken(client: Client, clientAssertion: String): Future[Token] =
+    interopTokenGenerator
+      .generate(
+        clientAssertion = clientAssertion,
+        audience = ApplicationConfiguration.generatedM2mJwtAudience.toList,
+        customClaims = Map(ORGANIZATION_ID_CLAIM -> client.consumerId.toString),
+        tokenIssuer = ApplicationConfiguration.generatedJwtIssuer,
+        validityDurationInSeconds = ApplicationConfiguration.generatedM2mJwtDuration.toLong,
+        isM2M = true
+      )
+
+  private def checkConsumerClientValidity(client: Client, purpose: Purpose): Future[(Seq[String], Int)] = {
     def checkClientStates(statesChain: ClientStatesChain): Future[Unit] = {
 
       def validate(
@@ -143,40 +171,42 @@ final case class AuthApiServiceImpl(
 
     }
 
-    client.kind match {
-      case ClientKind.CONSUMER =>
-        for {
-          purposeUUID <- purposeId.toFuture(PurposeIdNotProvided)
-          purpose     <- client.purposes
-            .find(_.purposeId == purposeUUID)
-            .toFuture(PurposeNotFound(client.id, purposeUUID))
-          _           <- checkClientStates(purpose.states)
-        } yield (purpose.states.eservice.audience, purpose.states.eservice.voucherLifespan)
-      case ClientKind.API      =>
-        Future.successful(
-          (ApplicationConfiguration.generatedM2mJwtAudience.toSeq, ApplicationConfiguration.generatedM2mJwtDuration)
-        )
-    }
+    checkClientStates(purpose.states).as((purpose.states.eservice.audience, purpose.states.eservice.voucherLifespan))
   }
 
-  private def getCustomClaims(client: Client, purposeId: Option[UUID]): Future[Map[String, String]] =
-    client.kind match {
-      case ClientKind.CONSUMER => purposeId.toFuture(PurposeIdNotProvided).map(p => Map(PURPOSE_ID_CLAIM -> p.toString))
-      case ClientKind.API      => Future.successful(Map(ORGANIZATION_ID_CLAIM -> client.consumerId.toString))
-    }
-
-  private def sendToQueue(token: Token, client: Client, purposeId: Option[UUID], kid: String)(implicit
-    contexts: Seq[(String, String)]
-  ): Future[Unit] = {
+  private def sendToQueue(
+    token: Token,
+    client: Client,
+    purpose: Purpose,
+    clientAssertionChecker: ClientAssertionChecker
+  )(implicit contexts: Seq[(String, String)]): Future[Unit] = {
     val jwtDetails = JWTDetailsMessage(
-      jti = token.jti,
-      iat = token.iat,
-      exp = token.exp,
-      nbf = token.nbf,
-      organizationId = client.consumerId.toString,
+      jwtId = token.jti,
+      issuedAt = token.iat * 1000,
       clientId = client.id.toString,
-      purposeId = purposeId.map(_.toString),
-      kid = kid
+      organizationId = client.consumerId.toString,
+      agreementId = purpose.states.agreement.agreementId.toString,
+      eserviceId = purpose.states.eservice.eserviceId.toString,
+      descriptorId = purpose.states.eservice.descriptorId.toString,
+      purposeId = purpose.purposeId.toString,
+      purposeVersionId = purpose.states.purpose.versionId.toString,
+      algorithm = token.alg,
+      keyId = token.kid,
+      audience = token.aud.mkString(","),
+      subject = token.sub,
+      notBefore = token.nbf * 1000,
+      expirationTime = token.exp * 1000,
+      issuer = token.iss,
+      clientAssertion = ClientAssertionDetails(
+        jwtId = clientAssertionChecker.jwt.getJWTClaimsSet.getJWTID,
+        issuedAt = clientAssertionChecker.jwt.getJWTClaimsSet.getIssueTime.getTime,
+        algorithm = clientAssertionChecker.jwt.getHeader.getAlgorithm.getName,
+        keyId = clientAssertionChecker.kid,
+        issuer = clientAssertionChecker.jwt.getJWTClaimsSet.getIssuer,
+        subject = clientAssertionChecker.subject,
+        audience = clientAssertionChecker.jwt.getJWTClaimsSet.getAudience.asScala.mkString(","),
+        expirationTime = clientAssertionChecker.jwt.getJWTClaimsSet.getExpirationTime.getTime
+      )
     )
 
     queueService

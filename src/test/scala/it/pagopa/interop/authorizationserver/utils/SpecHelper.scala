@@ -23,7 +23,7 @@ trait SpecHelper { self: BaseSpec =>
   def mockKeyRetrieve(result: ClientKey = clientKey) =
     (mockAuthorizationManagementService
       .getKey(_: UUID, _: String)(_: Seq[(String, String)]))
-      .expects(clientId, kid, *)
+      .expects(clientId, clientAssertionKid, *)
       .once()
       .returns(Future.successful(result))
 
@@ -46,7 +46,7 @@ trait SpecHelper { self: BaseSpec =>
         false
       )
       .once()
-      .returns(Future.successful(generatedToken))
+      .returns(Future.successful(generatedToken.copy(expIn = eServiceTokenDuration.toLong)))
 
   def mockApiTokenGeneration() =
     (mockInteropTokenGenerator
@@ -60,7 +60,7 @@ trait SpecHelper { self: BaseSpec =>
         true
       )
       .once()
-      .returns(Future.successful(generatedToken))
+      .returns(Future.successful(generatedToken.copy(expIn = ApplicationConfiguration.generatedM2mJwtDuration.toLong)))
 
   def mockQueueMessagePublication() =
     (mockQueueService
