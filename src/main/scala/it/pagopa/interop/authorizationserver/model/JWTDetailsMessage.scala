@@ -22,8 +22,7 @@ final case class JWTDetailsMessage(
   issuer: String,
   clientAssertion: ClientAssertionDetails
 ) {
-  def readableString: String = ""
-//    s"jti: $jti / iat: $iat / exp: $exp / nbf: $nbf / organizationId: $organizationId / clientId: $clientId / kid: $kid / purposeId: $purposeId"
+  def readableString: String = this.toJson.compactPrint
 }
 
 object JWTDetailsMessage extends SprayJsonSupport with DefaultJsonProtocol {
