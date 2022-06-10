@@ -52,7 +52,7 @@ trait Dependencies {
     )
 
   private def signerService()(implicit actorSystem: ActorSystem[_]): SignerService =
-    KMSSignerServiceImpl(Option(System.getenv("KMS_MAX_CONCURRENCY").toInt).getOrElse(1000))(actorSystem.classicSystem)
+    KMSSignerServiceImpl()(actorSystem.classicSystem)
 
   def getClientAssertionValidator()(implicit ec: ExecutionContext): Future[ClientAssertionValidator] =
     JWTConfiguration.jwtReader
