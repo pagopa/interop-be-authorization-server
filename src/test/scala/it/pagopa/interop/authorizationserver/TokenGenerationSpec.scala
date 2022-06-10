@@ -90,7 +90,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
 
       (mockAuthorizationManagementService
         .getKey(_: UUID, _: String)(_: Seq[(String, String)]))
-        .expects(clientId, kid, *)
+        .expects(clientId, clientAssertionKid, *)
         .once()
         .returns(
           Future.failed(AuthorizationManagementApiError(code = 404, message = "something", responseContent = None))
@@ -236,7 +236,6 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       mockKeyRetrieve()
       mockClientRetrieve(apiClient)
       mockApiTokenGeneration()
-      mockQueueMessagePublication()
 
       val expectedResponse =
         ClientCredentialsResponse(
