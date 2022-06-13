@@ -13,9 +13,8 @@ import com.typesafe.scalalogging.Logger
 import scala.util.{Failure, Success}
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
+import scala.concurrent.ExecutionContext
 import buildinfo.BuildInfo
-import akka.actor.typed.DispatcherSelector
-import scala.concurrent.ExecutionContextExecutor
 
 object Main extends App with CORSSupport with Dependencies {
 
@@ -25,10 +24,8 @@ object Main extends App with CORSSupport with Dependencies {
 
   val system: ActorSystem[Nothing] = ActorSystem[Nothing](
     Behaviors.setup[Nothing] { context =>
-      implicit val actorSystem: ActorSystem[_]                  = context.system
-      // implicit val executionContext: ExecutionContext = actorSystem.executionContext
-      val dispatcherSelector: DispatcherSelector                = DispatcherSelector.fromConfig("futures-dispatcher")
-      implicit val blockingDispatcher: ExecutionContextExecutor = context.system.dispatchers.lookup(dispatcherSelector)
+      implicit val actorSystem: ActorSystem[_]        = context.system
+      implicit val executionContext: ExecutionContext = actorSystem.executionContext
 
       Kamon.init()
       AkkaManagement.get(actorSystem.classicSystem).start()
