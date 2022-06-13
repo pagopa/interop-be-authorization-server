@@ -4,7 +4,6 @@ import it.pagopa.interop.authorizationmanagement.client.model.KeyWithClient
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
 import it.pagopa.interop.authorizationserver.model.JWTDetailsMessage
 import it.pagopa.interop.authorizationserver.utils.SpecData._
-import it.pagopa.interop.commons.jwt.JWTInternalTokenConfig
 import it.pagopa.interop.commons.utils.{ORGANIZATION_ID_CLAIM, PURPOSE_ID_CLAIM}
 import spray.json.JsonWriter
 
@@ -12,13 +11,6 @@ import java.util.UUID
 import scala.concurrent.Future
 
 trait SpecHelper { self: BaseSpec =>
-
-  def mockInternalTokenGeneration(jwtConfig: JWTInternalTokenConfig) =
-    (mockInteropTokenGenerator
-      .generateInternalToken(_: String, _: List[String], _: String, _: Long))
-      .expects(jwtConfig.subject, jwtConfig.audience.toList, jwtConfig.issuer, jwtConfig.durationInSeconds)
-      .once()
-      .returns(Future.successful(internalToken))
 
   def mockKeyRetrieve(result: KeyWithClient = keyWithClient) =
     (mockAuthorizationManagementService
