@@ -36,7 +36,7 @@ class AuthorizationManagementServiceImpl(
   ): Future[KeyWithClient] =
     for {
       (correlationId, ip) <- extractHeaders(contexts).toFuture
-      request = tokenGenerationApi.getClientAndKeyByKeyId(
+      request = tokenGenerationApi.getKeyWithClientByKeyId(
         xCorrelationId = correlationId,
         clientId,
         kid,
