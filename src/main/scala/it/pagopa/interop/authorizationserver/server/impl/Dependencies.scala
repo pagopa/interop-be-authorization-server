@@ -51,8 +51,8 @@ trait Dependencies {
       AuthorizationClientApi(ApplicationConfiguration.authorizationManagementURL)
     )(blockingEc)
 
-  private def signerService()(implicit actorSystem: ActorSystem[_]): SignerService =
-    KMSSignerServiceImpl()(actorSystem.classicSystem)
+  private def signerService()(implicit actorSystem: ActorSystem[_], blockingEc: ExecutionContext): SignerService =
+    KMSSignerServiceImpl(ApplicationConfiguration.signerMaxConnections)(actorSystem.classicSystem, blockingEc)
 
   def getClientAssertionValidator()(implicit ec: ExecutionContext): Future[ClientAssertionValidator] =
     JWTConfiguration.jwtReader
@@ -70,7 +70,7 @@ trait Dependencies {
     blockingEc: ExecutionContext,
     actorSystem: ActorSystem[_]
   ): DefaultInteropTokenGenerator = new DefaultInteropTokenGenerator(
-    signerService(),
+    signerService()(actorSystem, blockingEc),
     new PrivateKeysKidHolder {
       override val RSAPrivateKeyset: Set[KID] = ApplicationConfiguration.rsaKeysIdentifiers
       override val ECPrivateKeyset: Set[KID]  = ApplicationConfiguration.ecKeysIdentifiers
