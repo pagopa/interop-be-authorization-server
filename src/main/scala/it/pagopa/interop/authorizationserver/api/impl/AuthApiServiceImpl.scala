@@ -44,7 +44,7 @@ final case class AuthApiServiceImpl(
   jwtValidator: ClientAssertionValidator,
   interopTokenGenerator: InteropTokenGenerator,
   queueService: QueueService
-)(implicit ec: ExecutionContext)
+)(implicit blockingEc: ExecutionContext)
     extends AuthApiService {
 
   val logger: LoggerTakingImplicit[ContextFieldsToLog] = Logger.takingImplicit[ContextFieldsToLog](this.getClass)

@@ -15,6 +15,7 @@ import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
 import scala.concurrent.ExecutionContext
 import buildinfo.BuildInfo
+import akka.actor.typed.DispatcherSelector
 
 object Main extends App with CORSSupport with Dependencies {
 
@@ -24,8 +25,9 @@ object Main extends App with CORSSupport with Dependencies {
 
   val system: ActorSystem[Nothing] = ActorSystem[Nothing](
     Behaviors.setup[Nothing] { context =>
-      implicit val actorSystem: ActorSystem[_]        = context.system
-      implicit val executionContext: ExecutionContext = actorSystem.executionContext
+      implicit val actorSystem: ActorSystem[_]  = context.system
+      val selector: DispatcherSelector          = DispatcherSelector.fromConfig("futures-dispatcher")
+      implicit val blockingEc: ExecutionContext = actorSystem.dispatchers.lookup(selector)
 
       Kamon.init()
       AkkaManagement.get(actorSystem.classicSystem).start()

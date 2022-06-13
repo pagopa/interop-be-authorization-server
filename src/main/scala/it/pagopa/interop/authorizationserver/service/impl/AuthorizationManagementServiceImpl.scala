@@ -14,7 +14,7 @@ import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 
 class AuthorizationManagementServiceImpl(invoker: AuthorizationManagementInvoker, keyApi: KeyApi, clientApi: ClientApi)(
-  implicit ec: ExecutionContext
+  implicit blockingEc: ExecutionContext
 ) extends AuthorizationManagementService {
 
   implicit val logger: LoggerTakingImplicit[ContextFieldsToLog] =

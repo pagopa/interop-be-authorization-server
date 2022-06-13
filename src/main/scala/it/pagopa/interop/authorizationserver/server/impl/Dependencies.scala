@@ -42,14 +42,14 @@ import scala.concurrent.{ExecutionContext, Future}
 trait Dependencies {
 
   def authorizationManagementService()(implicit
-    ec: ExecutionContext,
+    blockingEc: ExecutionContext,
     actorSystem: ActorSystem[_]
   ): AuthorizationManagementServiceImpl =
     new AuthorizationManagementServiceImpl(
-      AuthorizationManagementInvoker()(actorSystem.classicSystem),
+      AuthorizationManagementInvoker()(actorSystem.classicSystem, blockingEc),
       AuthorizationKeyApi(ApplicationConfiguration.authorizationManagementURL),
       AuthorizationClientApi(ApplicationConfiguration.authorizationManagementURL)
-    )
+    )(blockingEc)
 
   private def signerService()(implicit actorSystem: ActorSystem[_]): SignerService =
     KMSSignerServiceImpl(Option(System.getenv("KMS_MAX_CONCURRENCY").toInt).getOrElse(1000))(actorSystem.classicSystem)
@@ -67,7 +67,7 @@ trait Dependencies {
       )
 
   private def interopTokenGenerator()(implicit
-    ec: ExecutionContext,
+    blockingEc: ExecutionContext,
     actorSystem: ActorSystem[_]
   ): DefaultInteropTokenGenerator = new DefaultInteropTokenGenerator(
     signerService(),
@@ -75,25 +75,25 @@ trait Dependencies {
       override val RSAPrivateKeyset: Set[KID] = ApplicationConfiguration.rsaKeysIdentifiers
       override val ECPrivateKeyset: Set[KID]  = ApplicationConfiguration.ecKeysIdentifiers
     }
-  )
+  )(blockingEc)
 
-  private def queueService()(implicit ec: ExecutionContext): QueueServiceImpl =
-    QueueServiceImpl(ApplicationConfiguration.jwtQueueUrl)
+  private def queueService()(implicit blockingEc: ExecutionContext): QueueServiceImpl =
+    QueueServiceImpl(ApplicationConfiguration.jwtQueueUrl)(blockingEc)
 
   private def authApiService(
     clientAssertionValidator: ClientAssertionValidator
-  )(implicit ec: ExecutionContext, actorSystem: ActorSystem[_]): AuthApiService =
+  )(implicit blockingEc: ExecutionContext, actorSystem: ActorSystem[_]): AuthApiService =
     AuthApiServiceImpl(
-      authorizationManagementService(),
+      authorizationManagementService()(blockingEc, actorSystem),
       clientAssertionValidator,
-      interopTokenGenerator(),
-      queueService()
-    )
+      interopTokenGenerator()(blockingEc, actorSystem),
+      queueService()(blockingEc)
+    )(blockingEc)
 
   def authApi(
     clientAssertionValidator: ClientAssertionValidator
-  )(implicit ec: ExecutionContext, actorSystem: ActorSystem[_]): AuthApi = new AuthApi(
-    authApiService(clientAssertionValidator),
+  )(implicit blockingEc: ExecutionContext, actorSystem: ActorSystem[_]): AuthApi = new AuthApi(
+    authApiService(clientAssertionValidator)(blockingEc, actorSystem),
     AuthApiMarshallerImpl,
     SecurityDirectives.authenticateOAuth2("SecurityRealm", PassThroughAuthenticator)
   )
