@@ -97,9 +97,6 @@ object SpecData {
     )
   )
 
-  val clientKey: ClientKey =
-    ClientKey(key = modelKey, relationshipId = UUID.randomUUID(), name = "keyName", createdAt = OffsetDateTime.now())
-
   def makeClient(
     purposeState: ClientComponentState = ClientComponentState.ACTIVE,
     eServiceState: ClientComponentState = ClientComponentState.ACTIVE,
@@ -141,6 +138,14 @@ object SpecData {
     eServiceState = ClientComponentState.ACTIVE,
     agreementState = ClientComponentState.ACTIVE,
     kind = ClientKind.CONSUMER
+  )
+
+  val keyWithClient: KeyWithClient = KeyWithClient(
+    key = modelKey,
+    client = activeClient,
+    relationshipId = UUID.randomUUID(),
+    name = "keyName",
+    createdAt = OffsetDateTime.now()
   )
 
   val expectedQueueMessage: JWTDetailsMessage = JWTDetailsMessage(

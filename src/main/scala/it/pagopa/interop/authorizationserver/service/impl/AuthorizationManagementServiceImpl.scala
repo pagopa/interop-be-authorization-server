@@ -1,41 +1,48 @@
 package it.pagopa.interop.authorizationserver.service.impl
 
-import it.pagopa.interop.authorizationserver.service.{AuthorizationManagementInvoker, AuthorizationManagementService}
-import it.pagopa.interop.authorizationmanagement.client.api.{ClientApi, KeyApi}
-import it.pagopa.interop.authorizationmanagement.client.invoker.{ApiError, BearerToken}
-import it.pagopa.interop.authorizationmanagement.client.model._
-import it.pagopa.interop.commons.utils.errors.GenericComponentErrors
-import it.pagopa.interop.commons.utils.extractHeaders
-import it.pagopa.interop.commons.utils.TypeConversions._
 import com.typesafe.scalalogging.{Logger, LoggerTakingImplicit}
+import it.pagopa.interop.authorizationmanagement.client.api.TokenGenerationApi
+import it.pagopa.interop.authorizationmanagement.client.invoker.ApiError
+import it.pagopa.interop.authorizationmanagement.client.model._
+import it.pagopa.interop.authorizationserver.service.{AuthorizationManagementInvoker, AuthorizationManagementService}
 import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
+import it.pagopa.interop.commons.utils.TypeConversions._
+import it.pagopa.interop.commons.utils.errors.GenericComponentErrors.MissingHeader
+import it.pagopa.interop.commons.utils.errors.{ComponentError, GenericComponentErrors}
+import it.pagopa.interop.commons.utils.{CORRELATION_ID_HEADER, IP_ADDRESS}
 
 import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 
-class AuthorizationManagementServiceImpl(invoker: AuthorizationManagementInvoker, keyApi: KeyApi, clientApi: ClientApi)(
-  implicit blockingEc: ExecutionContext
-) extends AuthorizationManagementService {
+class AuthorizationManagementServiceImpl(
+  invoker: AuthorizationManagementInvoker,
+  tokenGenerationApi: TokenGenerationApi
+)(implicit blockingEc: ExecutionContext)
+    extends AuthorizationManagementService {
 
   implicit val logger: LoggerTakingImplicit[ContextFieldsToLog] =
     Logger.takingImplicit[ContextFieldsToLog](this.getClass)
 
-  override def getKey(clientId: UUID, kid: String)(implicit contexts: Seq[(String, String)]): Future[ClientKey] =
+  def extractHeaders(contexts: Seq[(String, String)]): Either[ComponentError, (String, Option[String])] = {
+    val contextsMap = contexts.toMap
     for {
-      (bearerToken, correlationId, ip) <- extractHeaders(contexts).toFuture
-      request = keyApi.getClientKeyById(xCorrelationId = correlationId, clientId, kid, xForwardedFor = ip)(
-        BearerToken(bearerToken)
+      correlationId <- contextsMap.get(CORRELATION_ID_HEADER).toRight(MissingHeader(CORRELATION_ID_HEADER))
+      ip = contextsMap.get(IP_ADDRESS)
+    } yield (correlationId, ip)
+  }
+
+  override def getKeyWithClient(clientId: UUID, kid: String)(implicit
+    contexts: Seq[(String, String)]
+  ): Future[KeyWithClient] =
+    for {
+      (correlationId, ip) <- extractHeaders(contexts).toFuture
+      request = tokenGenerationApi.getClientAndKeyByKeyId(
+        xCorrelationId = correlationId,
+        clientId,
+        kid,
+        xForwardedFor = ip
       )
       result <- invoker.invoke(request, "Key Retrieve", handleCommonErrors(s"clientKey $kid for client $clientId"))
-    } yield result
-
-  override def getClient(clientId: UUID)(implicit contexts: Seq[(String, String)]): Future[Client] =
-    for {
-      (bearerToken, correlationId, ip) <- extractHeaders(contexts).toFuture
-      request = clientApi.getClient(xCorrelationId = correlationId, clientId, xForwardedFor = ip)(
-        BearerToken(bearerToken)
-      )
-      result <- invoker.invoke(request, "Client retrieval", handleCommonErrors(s"client $clientId"))
     } yield result
 
   private[service] def handleCommonErrors[T](

@@ -8,10 +8,7 @@ import akka.http.scaladsl.server.directives.SecurityDirectives
 import com.atlassian.oai.validator.report.ValidationReport
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
-import it.pagopa.interop.authorizationmanagement.client.api.{
-  ClientApi => AuthorizationClientApi,
-  KeyApi => AuthorizationKeyApi
-}
+import it.pagopa.interop.authorizationmanagement.client.api.{TokenGenerationApi => AuthorizationTokenGenerationApi}
 import it.pagopa.interop.authorizationserver.api._
 import it.pagopa.interop.authorizationserver.api.impl.{
   AuthApiMarshallerImpl,
@@ -47,8 +44,7 @@ trait Dependencies {
   ): AuthorizationManagementServiceImpl =
     new AuthorizationManagementServiceImpl(
       AuthorizationManagementInvoker()(actorSystem.classicSystem, blockingEc),
-      AuthorizationKeyApi(ApplicationConfiguration.authorizationManagementURL),
-      AuthorizationClientApi(ApplicationConfiguration.authorizationManagementURL)
+      AuthorizationTokenGenerationApi(ApplicationConfiguration.authorizationManagementURL)
     )(blockingEc)
 
   private def signerService()(implicit actorSystem: ActorSystem[_], blockingEc: ExecutionContext): SignerService =
