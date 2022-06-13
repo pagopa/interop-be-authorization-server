@@ -34,6 +34,7 @@ import it.pagopa.interop.commons.utils.TypeConversions._
 import it.pagopa.interop.commons.utils.errors.ComponentError
 import it.pagopa.interop.commons.utils.{CORRELATION_ID_HEADER, ORGANIZATION_ID_CLAIM, PURPOSE_ID_CLAIM}
 
+import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
@@ -74,11 +75,7 @@ final case class AuthApiServiceImpl(
       checker <- getChecker.toFuture
       m2mContexts = contexts.filter(_._1 == CORRELATION_ID_HEADER)
       clientUUID    <- checker.subject.toFutureUUID
-      keyWithClient <- authorizationManagementService
-        .getKeyWithClient(clientUUID, checker.kid)(m2mContexts)
-        .recoverWith {
-          case err: AuthorizationApiError[_] if err.code == 404 => Future.failed(KeyNotFound(err.getMessage))
-        }
+      keyWithClient <- getTokenGenerationBundle(clientUUID, checker.kid)
       _             <- verifyClientAssertion(keyWithClient, checker)
       token         <- generateToken(keyWithClient.client, checker, clientAssertion)
     } yield ClientCredentialsResponse(
@@ -105,6 +102,15 @@ final case class AuthApiServiceImpl(
       case ClientKind.CONSUMER => generateConsumerToken(client, checker, clientAssertion)
       case ClientKind.API      => generateApiToken(client, clientAssertion)
     }
+
+  def getTokenGenerationBundle(clientId: UUID, kid: String)(implicit
+    contexts: Seq[(String, String)]
+  ): Future[KeyWithClient] =
+    authorizationManagementService
+      .getKeyWithClient(clientId, kid)(contexts.filter(_._1 == CORRELATION_ID_HEADER))
+      .recoverWith {
+        case err: AuthorizationApiError[_] if err.code == 404 => Future.failed(KeyNotFound(err.getMessage))
+      }
 
   private def generateConsumerToken(client: Client, checker: ClientAssertionChecker, clientAssertion: String)(implicit
     context: Seq[(String, String)]
