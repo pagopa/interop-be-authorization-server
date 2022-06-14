@@ -6,9 +6,9 @@ import spray.json.JsonWriter
 
 import scala.concurrent.{ExecutionContext, Future}
 
-final case class QueueServiceImpl(queueUrl: String)(implicit ec: ExecutionContext) extends QueueService {
+final case class QueueServiceImpl(queueUrl: String)(implicit blockingEc: ExecutionContext) extends QueueService {
 
-  val sqsHandler: SQSSimpleHandler = SQSSimpleHandler(queueUrl)
+  val sqsHandler: SQSSimpleHandler = SQSSimpleHandler(queueUrl)(blockingEc)
 
   override def send[T: JsonWriter](message: T): Future[String] = sqsHandler.send(message)
 }

@@ -5,7 +5,6 @@ import it.pagopa.interop.authorizationserver.model.{ClientAssertionDetails, JWTD
 import it.pagopa.interop.commons.jwt.JWTConfiguration
 import it.pagopa.interop.commons.jwt.model.Token
 
-import java.time.OffsetDateTime
 import java.util.UUID
 
 object SpecData {
@@ -97,9 +96,6 @@ object SpecData {
     )
   )
 
-  val clientKey: ClientKey =
-    ClientKey(key = modelKey, relationshipId = UUID.randomUUID(), name = "keyName", createdAt = OffsetDateTime.now())
-
   def makeClient(
     purposeState: ClientComponentState = ClientComponentState.ACTIVE,
     eServiceState: ClientComponentState = ClientComponentState.ACTIVE,
@@ -142,6 +138,8 @@ object SpecData {
     agreementState = ClientComponentState.ACTIVE,
     kind = ClientKind.CONSUMER
   )
+
+  val keyWithClient: KeyWithClient = KeyWithClient(key = modelKey, client = activeClient)
 
   val expectedQueueMessage: JWTDetailsMessage = JWTDetailsMessage(
     jwtId = generatedToken.jti,

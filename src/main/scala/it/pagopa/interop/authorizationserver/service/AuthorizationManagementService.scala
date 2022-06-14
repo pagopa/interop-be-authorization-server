@@ -7,7 +7,6 @@ import scala.concurrent.Future
 
 trait AuthorizationManagementService {
 
-  def getKey(clientId: UUID, kid: String)(implicit contexts: Seq[(String, String)]): Future[ClientKey]
-  def getClient(clientId: UUID)(implicit contexts: Seq[(String, String)]): Future[Client]
+  def getKeyWithClient(clientId: UUID, kid: String)(implicit contexts: Seq[(String, String)]): Future[KeyWithClient]
 
 }

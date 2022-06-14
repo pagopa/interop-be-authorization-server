@@ -9,7 +9,6 @@ import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
 import it.pagopa.interop.authorizationserver.model.{ClientCredentialsResponse, JWTDetailsMessage, TokenType}
 import it.pagopa.interop.authorizationserver.utils.{BaseSpec, SpecHelper}
 import it.pagopa.interop.authorizationserver.utils.SpecData._
-import it.pagopa.interop.commons.jwt.{JWTConfiguration, JWTInternalTokenConfig}
 import org.scalatest.matchers.should.Matchers._
 import spray.json.JsonWriter
 
@@ -19,8 +18,6 @@ import scala.concurrent.Future
 class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTest {
 
   implicit val context: Seq[(String, String)] = Seq.empty
-
-  val jwtConfig: JWTInternalTokenConfig = JWTConfiguration.jwtInternalTokenConfig
 
   "Token generation" should {
     "fail on wrong client assertion type" in {
@@ -86,10 +83,8 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
     }
 
     "fail if kid in the assertion is not found for the given client ID" in {
-      mockInternalTokenGeneration(jwtConfig)
-
       (mockAuthorizationManagementService
-        .getKey(_: UUID, _: String)(_: Seq[(String, String)]))
+        .getKeyWithClient(_: UUID, _: String)(_: Seq[(String, String)]))
         .expects(clientId, clientAssertionKid, *)
         .once()
         .returns(
@@ -107,8 +102,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
     }
 
     "fail if the assertion is not signed with the public key corresponding to the kid" in {
-      mockInternalTokenGeneration(jwtConfig)
-      mockKeyRetrieve(clientKey.copy(key = anotherModelKey))
+      mockKeyRetrieve(keyWithClient.copy(key = anotherModelKey))
 
       Get() ~> service.createToken(
         Some(clientId.toString),
@@ -121,9 +115,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
     }
 
     "succeed even if publish on queue fails" in {
-      mockInternalTokenGeneration(jwtConfig)
       mockKeyRetrieve()
-      mockClientRetrieve()
       mockConsumerTokenGeneration()
 
       (mockQueueService
@@ -146,9 +138,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
 
   "Consumer token generation" should {
     "succeed with correct request" in {
-      mockInternalTokenGeneration(jwtConfig)
       mockKeyRetrieve()
-      mockClientRetrieve()
       mockConsumerTokenGeneration()
       mockQueueMessagePublication()
 
@@ -167,9 +157,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
     }
 
     "fail if purpose id is not assigned to the client" in {
-      mockInternalTokenGeneration(jwtConfig)
-      mockKeyRetrieve()
-      mockClientRetrieve(activeClient.copy(purposes = Seq.empty))
+      mockKeyRetrieve(result = keyWithClient.copy(client = activeClient.copy(purposes = Seq.empty)))
 
       Get() ~> service.createToken(
         Some(clientId.toString),
@@ -182,9 +170,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
     }
 
     "fail if Purpose is not active" in {
-      mockInternalTokenGeneration(jwtConfig)
-      mockKeyRetrieve()
-      mockClientRetrieve(makeClient(purposeState = ClientComponentState.INACTIVE))
+      mockKeyRetrieve(result = keyWithClient.copy(client = makeClient(purposeState = ClientComponentState.INACTIVE)))
 
       Get() ~> service.createToken(
         Some(clientId.toString),
@@ -197,9 +183,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
     }
 
     "fail if EService is not active" in {
-      mockInternalTokenGeneration(jwtConfig)
-      mockKeyRetrieve()
-      mockClientRetrieve(makeClient(eServiceState = ClientComponentState.INACTIVE))
+      mockKeyRetrieve(result = keyWithClient.copy(client = makeClient(eServiceState = ClientComponentState.INACTIVE)))
 
       Get() ~> service.createToken(
         Some(clientId.toString),
@@ -212,9 +196,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
     }
 
     "fail if Agreement is not active" in {
-      mockInternalTokenGeneration(jwtConfig)
-      mockKeyRetrieve()
-      mockClientRetrieve(makeClient(agreementState = ClientComponentState.INACTIVE))
+      mockKeyRetrieve(result = keyWithClient.copy(client = makeClient(agreementState = ClientComponentState.INACTIVE)))
 
       Get() ~> service.createToken(
         Some(clientId.toString),
@@ -232,9 +214,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
     "succeed with correct request" in {
       val apiClient = makeClient(kind = ClientKind.API).copy(purposes = Seq.empty)
 
-      mockInternalTokenGeneration(jwtConfig)
-      mockKeyRetrieve()
-      mockClientRetrieve(apiClient)
+      mockKeyRetrieve(result = keyWithClient.copy(client = apiClient))
       mockApiTokenGeneration()
 
       val expectedResponse =
