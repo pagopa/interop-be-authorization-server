@@ -73,7 +73,6 @@ final case class AuthApiServiceImpl(
 
     val result: Future[ClientCredentialsResponse] = for {
       checker <- getChecker.toFuture
-      m2mContexts = contexts.filter(_._1 == CORRELATION_ID_HEADER)
       clientUUID    <- checker.subject.toFutureUUID
       keyWithClient <- getTokenGenerationBundle(clientUUID, checker.kid)
       _             <- verifyClientAssertion(keyWithClient, checker)
