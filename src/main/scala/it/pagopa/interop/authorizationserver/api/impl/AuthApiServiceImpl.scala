@@ -72,7 +72,7 @@ final case class AuthApiServiceImpl(
     } yield checker
 
     val result: Future[ClientCredentialsResponse] = for {
-      checker <- getChecker.toFuture
+      checker       <- getChecker.toFuture
       clientUUID    <- checker.subject.toFutureUUID
       keyWithClient <- getTokenGenerationBundle(clientUUID, checker.kid)
       _             <- verifyClientAssertion(keyWithClient, checker)
