@@ -10,6 +10,6 @@ addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.6")
 
 addSbtPlugin("com.lightbend.sbt" % "sbt-javaagent" % "0.1.6")
 
-libraryDependencies += "com.thesamet.scalapb" %% "compilerplugin" % "0.11.10"
+libraryDependencies += "com.thesamet.scalapb" %% "compilerplugin" % "0.11.11"
 
 addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")

@@ -35,6 +35,7 @@ import it.pagopa.interop.commons.utils.TypeConversions.TryOps
 import it.pagopa.interop.commons.utils.errors.GenericComponentErrors.ValidationRequestError
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContextExecutor
 
 trait Dependencies {
 
@@ -73,12 +74,12 @@ trait Dependencies {
     }
   )(blockingEc)
 
-  private def queueService()(implicit blockingEc: ExecutionContext): QueueServiceImpl =
+  private def queueService()(implicit blockingEc: ExecutionContextExecutor): QueueServiceImpl =
     QueueServiceImpl(ApplicationConfiguration.jwtQueueUrl)(blockingEc)
 
   private def authApiService(
     clientAssertionValidator: ClientAssertionValidator
-  )(implicit blockingEc: ExecutionContext, actorSystem: ActorSystem[_]): AuthApiService =
+  )(implicit blockingEc: ExecutionContextExecutor, actorSystem: ActorSystem[_]): AuthApiService =
     AuthApiServiceImpl(
       authorizationManagementService()(blockingEc, actorSystem),
       clientAssertionValidator,
@@ -88,7 +89,7 @@ trait Dependencies {
 
   def authApi(
     clientAssertionValidator: ClientAssertionValidator
-  )(implicit blockingEc: ExecutionContext, actorSystem: ActorSystem[_]): AuthApi = new AuthApi(
+  )(implicit blockingEc: ExecutionContextExecutor, actorSystem: ActorSystem[_]): AuthApi = new AuthApi(
     authApiService(clientAssertionValidator)(blockingEc, actorSystem),
     AuthApiMarshallerImpl,
     SecurityDirectives.authenticateOAuth2("SecurityRealm", PassThroughAuthenticator)
