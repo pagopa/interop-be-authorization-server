@@ -48,8 +48,8 @@ trait Dependencies {
       AuthorizationTokenGenerationApi(ApplicationConfiguration.authorizationManagementURL)
     )(blockingEc)
 
-  private def signerService()(implicit actorSystem: ActorSystem[_], blockingEc: ExecutionContext): SignerService =
-    KMSSignerServiceImpl(ApplicationConfiguration.signerMaxConnections)(actorSystem.classicSystem, blockingEc)
+  private def signerService()(implicit blockingEc: ExecutionContext): SignerService =
+    KMSSignerServiceImpl(ApplicationConfiguration.signerMaxConnections)(blockingEc)
 
   def getClientAssertionValidator()(implicit ec: ExecutionContext): Future[ClientAssertionValidator] =
     JWTConfiguration.jwtReader
@@ -63,16 +63,14 @@ trait Dependencies {
         }
       )
 
-  private def interopTokenGenerator()(implicit
-    blockingEc: ExecutionContext,
-    actorSystem: ActorSystem[_]
-  ): DefaultInteropTokenGenerator = new DefaultInteropTokenGenerator(
-    signerService()(actorSystem, blockingEc),
-    new PrivateKeysKidHolder {
-      override val RSAPrivateKeyset: Set[KID] = ApplicationConfiguration.rsaKeysIdentifiers
-      override val ECPrivateKeyset: Set[KID]  = ApplicationConfiguration.ecKeysIdentifiers
-    }
-  )(blockingEc)
+  private def interopTokenGenerator()(implicit blockingEc: ExecutionContext): DefaultInteropTokenGenerator =
+    new DefaultInteropTokenGenerator(
+      signerService()(blockingEc),
+      new PrivateKeysKidHolder {
+        override val RSAPrivateKeyset: Set[KID] = ApplicationConfiguration.rsaKeysIdentifiers
+        override val ECPrivateKeyset: Set[KID]  = ApplicationConfiguration.ecKeysIdentifiers
+      }
+    )(blockingEc)
 
   private def queueService()(implicit blockingEc: ExecutionContextExecutor): QueueServiceImpl =
     QueueServiceImpl(ApplicationConfiguration.jwtQueueUrl)(blockingEc)
@@ -83,7 +81,7 @@ trait Dependencies {
     AuthApiServiceImpl(
       authorizationManagementService()(blockingEc, actorSystem),
       clientAssertionValidator,
-      interopTokenGenerator()(blockingEc, actorSystem),
+      interopTokenGenerator()(blockingEc),
       queueService()(blockingEc)
     )(blockingEc)
 
