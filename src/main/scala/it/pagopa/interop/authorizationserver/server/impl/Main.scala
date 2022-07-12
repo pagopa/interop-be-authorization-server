@@ -35,7 +35,7 @@ object Main extends App with CORSSupport with Dependencies {
       val serverBinding = for {
         clientAssertionValidator <- getClientAssertionValidator()
         controller: Controller = new Controller(
-          authApi(clientAssertionValidator),
+          authApi(clientAssertionValidator, blockingEc),
           healthApi,
           validationExceptionToRoute.some
         )(actorSystem.classicSystem)

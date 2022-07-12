@@ -6,16 +6,15 @@ import it.pagopa.interop.authorizationmanagement.client.model.Key
 import it.pagopa.interop.authorizationmanagement.client.invoker.Serializers
 import org.json4s.jackson.Serialization
 import org.json4s.{DefaultFormats, Formats}
-import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContextExecutor
 
 package object service {
   type AuthorizationManagementInvoker = authorizationmanagement.client.invoker.ApiInvoker
 
   object AuthorizationManagementInvoker {
-    def apply()(implicit actorSystem: ActorSystem, blockingEc: ExecutionContext): AuthorizationManagementInvoker = {
+    def apply(blockingEc: ExecutionContextExecutor)(implicit actorSystem: ActorSystem): AuthorizationManagementInvoker =
       authorizationmanagement.client.invoker
-        .ApiInvoker(authorizationmanagement.client.api.EnumsSerializers.all)(actorSystem, blockingEc)
-    }
+        .ApiInvoker(authorizationmanagement.client.api.EnumsSerializers.all, blockingEc)(actorSystem)
 
     private def serializationFormats: Formats =
       DefaultFormats ++ Serializers.all ++ authorizationmanagement.client.api.EnumsSerializers.all
