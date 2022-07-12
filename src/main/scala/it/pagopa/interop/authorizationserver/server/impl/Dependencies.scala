@@ -28,7 +28,7 @@ import it.pagopa.interop.commons.jwt.service.impl.{
   getClaimsVerifier
 }
 import it.pagopa.interop.commons.signer.service.SignerService
-import it.pagopa.interop.commons.signer.service.impl.KMSSignerServiceImpl
+import it.pagopa.interop.commons.signer.service.impl.KMSSignerService
 import it.pagopa.interop.commons.utils.AkkaUtils.PassThroughAuthenticator
 import it.pagopa.interop.commons.utils.OpenapiUtils
 import it.pagopa.interop.commons.utils.TypeConversions.TryOps
@@ -39,22 +39,19 @@ import scala.concurrent.ExecutionContextExecutor
 
 trait Dependencies {
 
-  def authorizationManagementService()(implicit
-    blockingEc: ExecutionContext,
-    actorSystem: ActorSystem[_]
-  ): AuthorizationManagementServiceImpl =
+  def authorizationManagementService(
+    blockingEc: ExecutionContextExecutor
+  )(implicit ec: ExecutionContext, actorSystem: ActorSystem[_]): AuthorizationManagementServiceImpl =
     new AuthorizationManagementServiceImpl(
-      AuthorizationManagementInvoker()(actorSystem.classicSystem, blockingEc),
+      AuthorizationManagementInvoker(blockingEc)(actorSystem.classicSystem),
       AuthorizationTokenGenerationApi(ApplicationConfiguration.authorizationManagementURL)
-    )(blockingEc)
+    )
 
-  private def signerService()(implicit blockingEc: ExecutionContext): SignerService =
-    KMSSignerServiceImpl(ApplicationConfiguration.signerMaxConnections)(blockingEc)
+  private def signerService(blockingEc: ExecutionContextExecutor): SignerService = new KMSSignerService(blockingEc)
 
-  def getClientAssertionValidator()(implicit ec: ExecutionContext): Future[ClientAssertionValidator] =
+  def getClientAssertionValidator(): Future[ClientAssertionValidator] =
     JWTConfiguration.jwtReader
       .loadKeyset()
-      .toFuture
       .map(keyset =>
         new DefaultClientAssertionValidator with PublicKeysHolder {
           var publicKeyset: Map[KID, SerializedKey]                                        = keyset
@@ -62,33 +59,36 @@ trait Dependencies {
             getClaimsVerifier(audience = ApplicationConfiguration.clientAssertionAudience)
         }
       )
+      .toFuture
 
-  private def interopTokenGenerator()(implicit blockingEc: ExecutionContext): DefaultInteropTokenGenerator =
+  private def interopTokenGenerator(blockingEc: ExecutionContextExecutor): DefaultInteropTokenGenerator =
     new DefaultInteropTokenGenerator(
-      signerService()(blockingEc),
+      signerService(blockingEc),
       new PrivateKeysKidHolder {
         override val RSAPrivateKeyset: Set[KID] = ApplicationConfiguration.rsaKeysIdentifiers
         override val ECPrivateKeyset: Set[KID]  = ApplicationConfiguration.ecKeysIdentifiers
       }
     )(blockingEc)
 
-  private def queueService()(implicit blockingEc: ExecutionContextExecutor): QueueServiceImpl =
+  private def queueService(blockingEc: ExecutionContextExecutor): QueueServiceImpl =
     QueueServiceImpl(ApplicationConfiguration.jwtQueueUrl)(blockingEc)
 
   private def authApiService(
-    clientAssertionValidator: ClientAssertionValidator
-  )(implicit blockingEc: ExecutionContextExecutor, actorSystem: ActorSystem[_]): AuthApiService =
+    clientAssertionValidator: ClientAssertionValidator,
+    blockingEc: ExecutionContextExecutor
+  )(implicit actorSystem: ActorSystem[_], ec: ExecutionContext): AuthApiService =
     AuthApiServiceImpl(
-      authorizationManagementService()(blockingEc, actorSystem),
+      authorizationManagementService(blockingEc),
       clientAssertionValidator,
-      interopTokenGenerator()(blockingEc),
-      queueService()(blockingEc)
-    )(blockingEc)
+      interopTokenGenerator(blockingEc),
+      queueService(blockingEc)
+    )
 
-  def authApi(
-    clientAssertionValidator: ClientAssertionValidator
-  )(implicit blockingEc: ExecutionContextExecutor, actorSystem: ActorSystem[_]): AuthApi = new AuthApi(
-    authApiService(clientAssertionValidator)(blockingEc, actorSystem),
+  def authApi(clientAssertionValidator: ClientAssertionValidator, blockingEc: ExecutionContextExecutor)(implicit
+    ec: ExecutionContext,
+    actorSystem: ActorSystem[_]
+  ): AuthApi = new AuthApi(
+    authApiService(clientAssertionValidator, blockingEc),
     AuthApiMarshallerImpl,
     SecurityDirectives.authenticateOAuth2("SecurityRealm", PassThroughAuthenticator)
   )
