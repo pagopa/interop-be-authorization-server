@@ -8,8 +8,6 @@ addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat" % "0.3.3")
 
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.6")
 
-addSbtPlugin("io.kamon" % "sbt-kanela-runner" % "2.0.14")
-
 libraryDependencies += "com.thesamet.scalapb" %% "compilerplugin" % "0.11.11"
 
 addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
