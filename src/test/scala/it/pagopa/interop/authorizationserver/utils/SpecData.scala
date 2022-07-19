@@ -107,9 +107,8 @@ object SpecData {
     name = "clientName",
     description = None,
     purposes = Seq(
-      Purpose(
-        purposeId = purposeId,
-        states = ClientStatesChain(
+      Purpose(states =
+        ClientStatesChain(
           id = UUID.randomUUID(),
           eservice = ClientEServiceDetails(
             eserviceId = eServiceId,

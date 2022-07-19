@@ -117,7 +117,7 @@ final case class AuthApiServiceImpl(
     purposeId                 <- checker.purposeId.toFuture(PurposeIdNotProvided)
     purposeUuid               <- purposeId.toFutureUUID
     purpose                   <- client.purposes
-      .find(_.purposeId == purposeUuid)
+      .find(_.states.purpose.purposeId == purposeUuid)
       .toFuture(PurposeNotFound(client.id, purposeUuid))
     (audience, tokenDuration) <- checkConsumerClientValidity(client, purpose)
     customClaims = Map(PURPOSE_ID_CLAIM -> purposeId)
@@ -191,7 +191,7 @@ final case class AuthApiServiceImpl(
       agreementId = purpose.states.agreement.agreementId.toString,
       eserviceId = purpose.states.eservice.eserviceId.toString,
       descriptorId = purpose.states.eservice.descriptorId.toString,
-      purposeId = purpose.purposeId.toString,
+      purposeId = purpose.states.purpose.purposeId.toString,
       purposeVersionId = purpose.states.purpose.versionId.toString,
       algorithm = token.alg,
       keyId = token.kid,
