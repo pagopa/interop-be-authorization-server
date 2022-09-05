@@ -9,6 +9,6 @@ object AuthApiMarshallerImpl extends AuthApiMarshaller {
   override implicit def toEntityMarshallerClientCredentialsResponse: ToEntityMarshaller[ClientCredentialsResponse] =
     sprayJsonMarshaller[ClientCredentialsResponse]
 
-  override implicit def toEntityMarshallerProblem: ToEntityMarshaller[Problem] =
-    sprayJsonMarshaller[Problem]
+  override implicit def toEntityMarshallerProblem: ToEntityMarshaller[Problem] = entityMarshallerProblem
+
 }
