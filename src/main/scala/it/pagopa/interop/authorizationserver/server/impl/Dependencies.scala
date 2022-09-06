@@ -15,6 +15,7 @@ import it.pagopa.interop.authorizationserver.api.impl.{
   AuthApiServiceImpl,
   HealthApiMarshallerImpl,
   HealthServiceApiImpl,
+  entityMarshallerProblem,
   problemOf
 }
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
@@ -32,7 +33,6 @@ import it.pagopa.interop.commons.signer.service.impl.KMSSignerService
 import it.pagopa.interop.commons.utils.AkkaUtils.PassThroughAuthenticator
 import it.pagopa.interop.commons.utils.OpenapiUtils
 import it.pagopa.interop.commons.utils.TypeConversions.TryOps
-import it.pagopa.interop.commons.utils.errors.GenericComponentErrors.ValidationRequestError
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.ExecutionContextExecutor
@@ -102,8 +102,8 @@ trait Dependencies {
 
   val validationExceptionToRoute: ValidationReport => Route = report => {
     val error =
-      problemOf(StatusCodes.BadRequest, ValidationRequestError(OpenapiUtils.errorFromRequestValidationReport(report)))
-    complete(error.status, error)(AuthApiMarshallerImpl.toEntityMarshallerProblem)
+      problemOf(StatusCodes.BadRequest, OpenapiUtils.errorFromRequestValidationReport(report))
+    complete(error.status, error)(entityMarshallerProblem)
   }
 
 }
