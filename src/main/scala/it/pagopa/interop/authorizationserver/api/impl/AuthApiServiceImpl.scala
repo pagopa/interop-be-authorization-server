@@ -8,6 +8,7 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.data.{NonEmptyList, Validated}
 import cats.implicits._
 import com.typesafe.scalalogging.{Logger, LoggerTakingImplicit}
+import it.pagopa.commons.ratelimiter.Limiter
 import it.pagopa.interop.authorizationmanagement.client.invoker.{ApiError => AuthorizationApiError}
 import it.pagopa.interop.authorizationmanagement.client.model._
 import it.pagopa.interop.authorizationserver.api.AuthApiService
@@ -43,7 +44,8 @@ final case class AuthApiServiceImpl(
   authorizationManagementService: AuthorizationManagementService,
   jwtValidator: ClientAssertionValidator,
   interopTokenGenerator: InteropTokenGenerator,
-  queueService: QueueService
+  queueService: QueueService,
+  rateLimiter: Limiter
 )(implicit blockingEc: ExecutionContext)
     extends AuthApiService {
 
@@ -76,6 +78,7 @@ final case class AuthApiServiceImpl(
       clientUUID    <- checker.subject.toFutureUUID
       keyWithClient <- getTokenGenerationBundle(clientUUID, checker.kid)
       _             <- verifyClientAssertion(keyWithClient, checker)
+      _             <- rateLimiter.rateLimiting(keyWithClient.client.consumerId)
       token         <- generateToken(keyWithClient.client, checker, clientAssertion)
     } yield ClientCredentialsResponse(
       access_token = token.serialized,

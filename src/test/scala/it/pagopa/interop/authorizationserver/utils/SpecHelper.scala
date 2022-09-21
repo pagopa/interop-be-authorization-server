@@ -54,4 +54,7 @@ trait SpecHelper { self: BaseSpec =>
       .once()
       .returns(Future.successful("ok"))
 
+  def mockRateLimiter() =
+    (() => mockDateTimeSupplier.get).expects().returning(timestamp).once()
+
 }

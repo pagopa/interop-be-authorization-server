@@ -1,6 +1,10 @@
 package it.pagopa.interop.authorizationserver.common
 
 import com.typesafe.config.{Config, ConfigFactory}
+import it.pagopa.commons.ratelimiter.model.LimiterConfig
+
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.FiniteDuration
 
 object ApplicationConfiguration {
 
@@ -28,6 +32,19 @@ object ApplicationConfiguration {
 
   val ecKeysIdentifiers: Set[String] =
     config.getString("authorization-server.ec-keys-identifiers").split(",").toSet.filter(_.nonEmpty)
+
+  val rateLimiterConfigs: LimiterConfig = {
+    val rateInterval = config.getDuration("authorization-server.rate-limiter.rate-interval")
+
+    LimiterConfig(
+      limiterGroup = config.getString("authorization-server.rate-limiter.limiter-group"),
+      maxRequests = config.getInt("authorization-server.rate-limiter.max-requests"),
+      burstPercentage = config.getDouble("authorization-server.rate-limiter.burst-percentage"),
+      rateInterval = FiniteDuration(rateInterval.toMillis, TimeUnit.MILLISECONDS),
+      redisHost = config.getString("authorization-server.rate-limiter.redis-host"),
+      redisPort = config.getInt("authorization-server.rate-limiter.redis-port")
+    )
+  }
 
   require(generatedM2mJwtAudience.nonEmpty, "Generated JWT Audience cannot be empty")
   require(clientAssertionAudience.nonEmpty, "Client Assertion Audience cannot be empty")
