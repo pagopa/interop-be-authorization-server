@@ -8,7 +8,7 @@ import akka.http.scaladsl.server.directives.SecurityDirectives
 import com.atlassian.oai.validator.report.ValidationReport
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
-import it.pagopa.commons.ratelimiter.Limiter
+import it.pagopa.interop.commons.ratelimiter.RateLimiter
 import it.pagopa.interop.authorizationmanagement.client.api.{TokenGenerationApi => AuthorizationTokenGenerationApi}
 import it.pagopa.interop.authorizationserver.api._
 import it.pagopa.interop.authorizationserver.api.impl.{
@@ -29,6 +29,7 @@ import it.pagopa.interop.commons.jwt.service.impl.{
   DefaultInteropTokenGenerator,
   getClaimsVerifier
 }
+import it.pagopa.interop.commons.ratelimiter.impl.RedisRateLimiter
 import it.pagopa.interop.commons.signer.service.SignerService
 import it.pagopa.interop.commons.signer.service.impl.KMSSignerService
 import it.pagopa.interop.commons.utils.AkkaUtils.PassThroughAuthenticator
@@ -76,8 +77,8 @@ trait Dependencies {
   private def queueService(blockingEc: ExecutionContextExecutor): QueueServiceImpl =
     QueueServiceImpl(ApplicationConfiguration.jwtQueueUrl)(blockingEc)
 
-  private def rateLimiter: Limiter =
-    Limiter(ApplicationConfiguration.rateLimiterConfigs, dateTimeSupplier)
+  private def rateLimiter: RateLimiter =
+    RedisRateLimiter(ApplicationConfiguration.rateLimiterConfigs, dateTimeSupplier)
 
   private def authApiService(
     clientAssertionValidator: ClientAssertionValidator,

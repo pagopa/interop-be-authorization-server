@@ -8,7 +8,8 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.data.{NonEmptyList, Validated}
 import cats.implicits._
 import com.typesafe.scalalogging.{Logger, LoggerTakingImplicit}
-import it.pagopa.commons.ratelimiter.Limiter
+import it.pagopa.interop.commons.ratelimiter.RateLimiter
+import it.pagopa.interop.commons.ratelimiter
 import it.pagopa.interop.authorizationmanagement.client.invoker.{ApiError => AuthorizationApiError}
 import it.pagopa.interop.authorizationmanagement.client.model._
 import it.pagopa.interop.authorizationserver.api.AuthApiService
@@ -32,7 +33,7 @@ import it.pagopa.interop.commons.jwt.service.{ClientAssertionValidator, InteropT
 import it.pagopa.interop.commons.jwt.{JWTConfiguration, JWTInternalTokenConfig}
 import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
 import it.pagopa.interop.commons.utils.TypeConversions._
-import it.pagopa.interop.commons.utils.errors.ComponentError
+import it.pagopa.interop.commons.utils.errors.{ComponentError, GenericComponentErrors}
 import it.pagopa.interop.commons.utils.{CORRELATION_ID_HEADER, ORGANIZATION_ID_CLAIM, PURPOSE_ID_CLAIM}
 
 import java.util.UUID
@@ -45,11 +46,12 @@ final case class AuthApiServiceImpl(
   jwtValidator: ClientAssertionValidator,
   interopTokenGenerator: InteropTokenGenerator,
   queueService: QueueService,
-  rateLimiter: Limiter
+  rateLimiter: RateLimiter
 )(implicit blockingEc: ExecutionContext)
     extends AuthApiService {
 
-  val logger: LoggerTakingImplicit[ContextFieldsToLog] = Logger.takingImplicit[ContextFieldsToLog](this.getClass)
+  implicit val logger: LoggerTakingImplicit[ContextFieldsToLog] =
+    Logger.takingImplicit[ContextFieldsToLog](this.getClass)
 
   lazy val jwtConfig: JWTInternalTokenConfig = JWTConfiguration.jwtInternalTokenConfig
 
@@ -87,11 +89,14 @@ final case class AuthApiServiceImpl(
     )
 
     onComplete(result) {
-      case Success(token)              => createToken200(token)
-      case Failure(ex: ComponentError) =>
+      case Success(token)                                         => createToken200(token)
+      case Failure(ex: ComponentError)                            =>
         logger.error(s"Error while creating a token", ex)
         createToken400(problemOf(StatusCodes.BadRequest, CreateTokenRequestError))
-      case Failure(ex)                 =>
+      case Failure(ex @ ratelimiter.error.Errors.TooManyRequests) =>
+        logger.error(s"Error while creating a token", ex)
+        createToken429(problemOf(StatusCodes.TooManyRequests, GenericComponentErrors.TooManyRequests))
+      case Failure(ex)                                            =>
         logger.error(s"Error while creating a token for this request", ex)
         complete(StatusCodes.InternalServerError, problemOf(StatusCodes.InternalServerError, CreateTokenRequestError))
     }

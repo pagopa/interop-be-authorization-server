@@ -117,7 +117,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
     "succeed even if publish on queue fails" in {
       mockKeyRetrieve()
       mockConsumerTokenGeneration()
-      mockRateLimiter()
+      mockRateLimiterExec()
 
       (mockQueueService
         .send(_: JWTDetailsMessage)(_: JsonWriter[JWTDetailsMessage]))
@@ -141,7 +141,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
     "succeed with correct request" in {
       mockKeyRetrieve()
       mockConsumerTokenGeneration()
-      mockRateLimiter()
+      mockRateLimiterExec()
       mockQueueMessagePublication()
 
       val expectedResponse =
@@ -160,7 +160,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
 
     "fail if purpose id is not assigned to the client" in {
       mockKeyRetrieve(result = keyWithClient.copy(client = activeClient.copy(purposes = Seq.empty)))
-      mockRateLimiter()
+      mockRateLimiterExec()
 
       Get() ~> service.createToken(
         Some(clientId.toString),
@@ -174,7 +174,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
 
     "fail if Purpose is not active" in {
       mockKeyRetrieve(result = keyWithClient.copy(client = makeClient(purposeState = ClientComponentState.INACTIVE)))
-      mockRateLimiter()
+      mockRateLimiterExec()
 
       Get() ~> service.createToken(
         Some(clientId.toString),
@@ -188,7 +188,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
 
     "fail if EService is not active" in {
       mockKeyRetrieve(result = keyWithClient.copy(client = makeClient(eServiceState = ClientComponentState.INACTIVE)))
-      mockRateLimiter()
+      mockRateLimiterExec()
 
       Get() ~> service.createToken(
         Some(clientId.toString),
@@ -202,7 +202,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
 
     "fail if Agreement is not active" in {
       mockKeyRetrieve(result = keyWithClient.copy(client = makeClient(agreementState = ClientComponentState.INACTIVE)))
-      mockRateLimiter()
+      mockRateLimiterExec()
 
       Get() ~> service.createToken(
         Some(clientId.toString),
@@ -222,7 +222,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
 
       mockKeyRetrieve(result = keyWithClient.copy(client = apiClient))
       mockApiTokenGeneration()
-      mockRateLimiter()
+      mockRateLimiterExec()
 
       val expectedResponse =
         ClientCredentialsResponse(
