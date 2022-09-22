@@ -12,7 +12,6 @@ import it.pagopa.interop.commons.jwt.service.impl.{DefaultClientAssertionValidat
 import it.pagopa.interop.commons.jwt.service.{ClientAssertionValidator, InteropTokenGenerator}
 import it.pagopa.interop.commons.jwt.{KID, PublicKeysHolder, SerializedKey}
 import it.pagopa.interop.commons.ratelimiter.RateLimiter
-import it.pagopa.interop.commons.utils.service.OffsetDateTimeSupplier
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.wordspec.AnyWordSpecLike
 import spray.json.DefaultJsonProtocol
@@ -31,7 +30,6 @@ trait BaseSpec extends AnyWordSpecLike with SprayJsonSupport with DefaultJsonPro
   val mockInteropTokenGenerator: InteropTokenGenerator                   = mock[InteropTokenGenerator]
   val mockAuthorizationManagementService: AuthorizationManagementService = mock[AuthorizationManagementService]
   val mockQueueService: QueueService                                     = mock[QueueService]
-  val mockDateTimeSupplier: OffsetDateTimeSupplier                       = mock[OffsetDateTimeSupplier]
   val mockRateLimiter: RateLimiter                                       = mock[RateLimiter]
 
   def service(implicit ec: ExecutionContext): AuthApiService = customService()
