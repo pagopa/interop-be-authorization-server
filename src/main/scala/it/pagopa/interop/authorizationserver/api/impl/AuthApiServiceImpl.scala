@@ -32,6 +32,7 @@ import it.pagopa.interop.commons.jwt.model.{ClientAssertionChecker, Token, Valid
 import it.pagopa.interop.commons.jwt.service.{ClientAssertionValidator, InteropTokenGenerator}
 import it.pagopa.interop.commons.jwt.{JWTConfiguration, JWTInternalTokenConfig}
 import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
+import it.pagopa.interop.commons.ratelimiter.model.{Headers, RateLimitStatus}
 import it.pagopa.interop.commons.utils.TypeConversions._
 import it.pagopa.interop.commons.utils.errors.{ComponentError, GenericComponentErrors}
 import it.pagopa.interop.commons.utils.{CORRELATION_ID_HEADER, ORGANIZATION_ID_CLAIM, PURPOSE_ID_CLAIM}
@@ -75,27 +76,28 @@ final case class AuthApiServiceImpl(
         .recoverWith { case err => Failure(InvalidAssertion(err.getMessage)) }
     } yield checker
 
-    val result: Future[ClientCredentialsResponse] = for {
-      checker       <- getChecker.toFuture
-      clientUUID    <- checker.subject.toFutureUUID
-      keyWithClient <- getTokenGenerationBundle(clientUUID, checker.kid)
-      _             <- verifyClientAssertion(keyWithClient, checker)
-      _             <- rateLimiter.rateLimiting(keyWithClient.client.consumerId)
-      token         <- generateToken(keyWithClient.client, checker, clientAssertion)
-    } yield ClientCredentialsResponse(
-      access_token = token.serialized,
-      token_type = Bearer,
-      expires_in = token.expIn.toInt
+    val result: Future[(ClientCredentialsResponse, RateLimitStatus)] = for {
+      checker         <- getChecker.toFuture
+      clientUUID      <- checker.subject.toFutureUUID
+      keyWithClient   <- getTokenGenerationBundle(clientUUID, checker.kid)
+      _               <- verifyClientAssertion(keyWithClient, checker)
+      rateLimitStatus <- rateLimiter.rateLimiting(keyWithClient.client.consumerId)
+      token           <- generateToken(keyWithClient.client, checker, clientAssertion)
+    } yield (
+      ClientCredentialsResponse(access_token = token.serialized, token_type = Bearer, expires_in = token.expIn.toInt),
+      rateLimitStatus
     )
 
     onComplete(result) {
-      case Success(token)                                         => createToken200(token)
+      case Success((token, rateLimitStatus))                      =>
+        complete(StatusCodes.OK, Headers.headersFromStatus(rateLimitStatus), token)
       case Failure(ex: ComponentError)                            =>
         logger.error(s"Error while creating a token", ex)
         createToken400(problemOf(StatusCodes.BadRequest, CreateTokenRequestError))
-      case Failure(ex @ ratelimiter.error.Errors.TooManyRequests) =>
-        logger.error(s"Error while creating a token", ex)
-        createToken429(problemOf(StatusCodes.TooManyRequests, GenericComponentErrors.TooManyRequests))
+      case Failure(err: ratelimiter.error.Errors.TooManyRequests) =>
+        logger.error(s"Error while creating a token", err)
+        val problem = problemOf(StatusCodes.TooManyRequests, GenericComponentErrors.TooManyRequests)
+        complete(problem.status, Headers.headersFromStatus(err.status), problem)
       case Failure(ex)                                            =>
         logger.error(s"Error while creating a token for this request", ex)
         complete(StatusCodes.InternalServerError, problemOf(StatusCodes.InternalServerError, CreateTokenRequestError))

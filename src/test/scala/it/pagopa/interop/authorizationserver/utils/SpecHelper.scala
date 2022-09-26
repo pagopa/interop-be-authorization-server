@@ -6,7 +6,9 @@ import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
 import it.pagopa.interop.authorizationserver.model.JWTDetailsMessage
 import it.pagopa.interop.authorizationserver.utils.SpecData._
 import it.pagopa.interop.commons.logging.ContextFieldsToLog
+import it.pagopa.interop.commons.ratelimiter.model.RateLimitStatus
 import it.pagopa.interop.commons.utils.{ORGANIZATION_ID_CLAIM, PURPOSE_ID_CLAIM}
+import org.scalatest.time.SpanSugar.convertIntToGrainOfTime
 import spray.json.JsonWriter
 
 import java.util.UUID
@@ -65,6 +67,6 @@ trait SpecHelper { self: BaseSpec =>
       ))
       .expects(*, *, *, *)
       .once()
-      .returns(Future.unit)
+      .returns(Future.successful(RateLimitStatus(10, 10, 1.second)))
 
 }
