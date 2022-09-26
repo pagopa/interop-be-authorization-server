@@ -1,14 +1,18 @@
 package it.pagopa.interop.authorizationserver.utils
 
+import com.typesafe.scalalogging.LoggerTakingImplicit
 import it.pagopa.interop.authorizationmanagement.client.model.KeyWithClient
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
 import it.pagopa.interop.authorizationserver.model.JWTDetailsMessage
 import it.pagopa.interop.authorizationserver.utils.SpecData._
+import it.pagopa.interop.commons.logging.ContextFieldsToLog
+import it.pagopa.interop.commons.ratelimiter.model.RateLimitStatus
 import it.pagopa.interop.commons.utils.{ORGANIZATION_ID_CLAIM, PURPOSE_ID_CLAIM}
+import org.scalatest.time.SpanSugar.convertIntToGrainOfTime
 import spray.json.JsonWriter
 
 import java.util.UUID
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 trait SpecHelper { self: BaseSpec =>
 
@@ -53,5 +57,16 @@ trait SpecHelper { self: BaseSpec =>
       .expects(expectedQueueMessage, *)
       .once()
       .returns(Future.successful("ok"))
+
+  def mockRateLimiterExec() =
+    (mockRateLimiter
+      .rateLimiting(_: UUID)(
+        _: ExecutionContext,
+        _: LoggerTakingImplicit[ContextFieldsToLog],
+        _: Seq[(String, String)]
+      ))
+      .expects(*, *, *, *)
+      .once()
+      .returns(Future.successful(RateLimitStatus(10, 10, 1.second)))
 
 }

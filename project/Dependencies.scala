@@ -33,6 +33,7 @@ object Dependencies {
     lazy val commons      = namespace %% "interop-commons-utils"         % commonsVersion
     lazy val jwt          = namespace %% "interop-commons-jwt"           % commonsVersion
     lazy val queueManager = namespace %% "interop-commons-queue-manager" % commonsVersion
+    lazy val rateLimiter  = namespace %% "interop-commons-rate-limiter"  % commonsVersion
     lazy val signer       = namespace %% "interop-commons-signer"        % commonsVersion
   }
 
@@ -103,6 +104,7 @@ object Dependencies {
       pagopa.jwt                     % Compile,
       pagopa.queueManager            % Compile,
       pagopa.authorizationManagement % Compile,
+      pagopa.rateLimiter             % Compile,
       pagopa.signer                  % Compile,
       akka.httpTestkit               % Test,
       akka.streamTestkit             % Test,

@@ -8,9 +8,10 @@ import it.pagopa.interop.authorizationserver.api.AuthApiService
 import it.pagopa.interop.authorizationserver.api.impl.{AuthApiServiceImpl, _}
 import it.pagopa.interop.authorizationserver.model.ClientCredentialsResponse
 import it.pagopa.interop.authorizationserver.service.{AuthorizationManagementService, QueueService}
-import it.pagopa.interop.commons.jwt.{KID, PublicKeysHolder, SerializedKey}
 import it.pagopa.interop.commons.jwt.service.impl.{DefaultClientAssertionValidator, getClaimsVerifier}
 import it.pagopa.interop.commons.jwt.service.{ClientAssertionValidator, InteropTokenGenerator}
+import it.pagopa.interop.commons.jwt.{KID, PublicKeysHolder, SerializedKey}
+import it.pagopa.interop.commons.ratelimiter.RateLimiter
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.wordspec.AnyWordSpecLike
 import spray.json.DefaultJsonProtocol
@@ -29,6 +30,7 @@ trait BaseSpec extends AnyWordSpecLike with SprayJsonSupport with DefaultJsonPro
   val mockInteropTokenGenerator: InteropTokenGenerator                   = mock[InteropTokenGenerator]
   val mockAuthorizationManagementService: AuthorizationManagementService = mock[AuthorizationManagementService]
   val mockQueueService: QueueService                                     = mock[QueueService]
+  val mockRateLimiter: RateLimiter                                       = mock[RateLimiter]
 
   def service(implicit ec: ExecutionContext): AuthApiService = customService()
 
@@ -39,7 +41,8 @@ trait BaseSpec extends AnyWordSpecLike with SprayJsonSupport with DefaultJsonPro
       authorizationManagementService = mockAuthorizationManagementService,
       jwtValidator = clientAssertionValidator(clientAssertionAudience),
       interopTokenGenerator = mockInteropTokenGenerator,
-      queueService = mockQueueService
+      queueService = mockQueueService,
+      rateLimiter = mockRateLimiter
     )
 
   implicit def fromResponseUnmarshallerPurpose: FromEntityUnmarshaller[ClientCredentialsResponse] =
