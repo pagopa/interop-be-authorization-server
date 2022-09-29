@@ -35,17 +35,17 @@ import it.pagopa.interop.commons.signer.service.impl.KMSSignerService
 import it.pagopa.interop.commons.utils.AkkaUtils.PassThroughAuthenticator
 import it.pagopa.interop.commons.utils.OpenapiUtils
 import it.pagopa.interop.commons.utils.TypeConversions.TryOps
-import it.pagopa.interop.commons.utils.service.impl.OffsetDateTimeSupplierImpl
+import it.pagopa.interop.commons.utils.service.OffsetDateTimeSupplier
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 
 trait Dependencies {
 
-  val dateTimeSupplier: OffsetDateTimeSupplierImpl.type = OffsetDateTimeSupplierImpl
+  val dateTimeSupplier: OffsetDateTimeSupplier = OffsetDateTimeSupplier
 
   def authorizationManagementService(
     blockingEc: ExecutionContextExecutor
-  )(implicit ec: ExecutionContext, actorSystem: ActorSystem[_]): AuthorizationManagementServiceImpl =
+  )(implicit actorSystem: ActorSystem[_]): AuthorizationManagementServiceImpl =
     new AuthorizationManagementServiceImpl(
       AuthorizationManagementInvoker(blockingEc)(actorSystem.classicSystem),
       AuthorizationTokenGenerationApi(ApplicationConfiguration.authorizationManagementURL)
