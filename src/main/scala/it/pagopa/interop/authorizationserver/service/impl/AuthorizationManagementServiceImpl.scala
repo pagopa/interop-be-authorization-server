@@ -7,10 +7,12 @@ import it.pagopa.interop.authorizationmanagement.client.model._
 import it.pagopa.interop.authorizationserver.service.{AuthorizationManagementInvoker, AuthorizationManagementService}
 import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
 import it.pagopa.interop.commons.utils.errors.GenericComponentErrors
-import it.pagopa.interop.commons.utils.withHeaders
+import it.pagopa.interop.commons.utils.AkkaUtils.fastGetOpt
+import it.pagopa.interop.commons.utils.{CORRELATION_ID_HEADER, IP_ADDRESS}
 
 import java.util.UUID
 import scala.concurrent.Future
+import it.pagopa.interop.authorizationmanagement.client.invoker.ApiRequest
 
 class AuthorizationManagementServiceImpl(
   invoker: AuthorizationManagementInvoker,
@@ -22,9 +24,10 @@ class AuthorizationManagementServiceImpl(
 
   override def getKeyWithClient(clientId: UUID, kid: String)(implicit
     contexts: Seq[(String, String)]
-  ): Future[KeyWithClient] =
-    withHeaders { (_, correlationId, ip) =>
-      val request =
+  ): Future[KeyWithClient] = fastGetOpt(contexts)(CORRELATION_ID_HEADER)
+    .fold(Future.failed[KeyWithClient](GenericComponentErrors.MissingHeader(CORRELATION_ID_HEADER))) { correlationId =>
+      val ip: Option[String]                 = fastGetOpt(contexts)(IP_ADDRESS)
+      val request: ApiRequest[KeyWithClient] =
         tokenGenerationApi.getKeyWithClientByKeyId(xCorrelationId = correlationId, clientId, kid, xForwardedFor = ip)
       invoker.invoke(request, "Key Retrieve", handleCommonErrors(s"clientKey $kid for client $clientId"))
     }
