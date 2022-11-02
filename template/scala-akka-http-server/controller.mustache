@@ -1,40 +1,27 @@
 package {{invokerPackage}}
 
-//////////////////////////////////////////
-// __      ___   ___ _  _ ___ _  _  ___
-// \ \    / /_\ | _ \ \| |_ _| \| |/ __|
-//  \ \/\/ / _ \|   / .` || || .` | (_ |
-//   \_/\_/_/ \_\_|_\_|\_|___|_|\_|\___|
-//
-// This template has been customized and is not aligned to other services
-//////////////////////////////////////////
-
-import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Route
 {{#apiInfo}}{{#apis}}{{#operations}}import {{package}}.{{classname}}
 {{/operations}}{{/apis}}{{/apiInfo}}
 import akka.http.scaladsl.server.Directives._
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpMethods, HttpRequest}
-import akka.stream.scaladsl.Sink
 import com.atlassian.oai.validator.OpenApiInteractionValidator
 import com.atlassian.oai.validator.model.Request.Method
 import com.atlassian.oai.validator.model.SimpleRequest.Builder
 import com.atlassian.oai.validator.report.ValidationReport
 import com.github.mustachejava.DefaultMustacheFactory
 
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
-import java.io.{BufferedWriter, File, FileOutputStream, FileWriter, StringWriter}
-import com.typesafe.config.{Config, ConfigFactory}
+import java.io.{BufferedWriter, File, FileWriter, StringWriter}
 import scala.collection.mutable
 
 class Controller({{#apiInfo}}{{#apis}}{{#operations}}{{classVarName}}: {{classname}}{{^-last}}, {{/-last}}{{/operations}}{{/apis}}{{/apiInfo}}, validationExceptionToRoute: Option[ValidationReport => Route] = None)(implicit system: ActorSystem) {
 private final val openApiFileName: String = "interface-specification.yml"
-private final val swaggerEnabled: Boolean = Option(System.getenv("SWAGGER_ENABLED")).flatMap(_.toBooleanOption).getOrElse(false)
+private final val devEndpointsEnabled: Boolean = Option(System.getenv("DEV_ENDPOINTS_ENABLED")).flatMap(_.toBooleanOption).getOrElse(false)
+
 private val mf = new DefaultMustacheFactory
 val writer =
 mf.compile(openApiFileName).execute(new StringWriter(), mutable.HashMap().asJava).asInstanceOf[StringWriter]
@@ -53,7 +40,7 @@ private val validator: OpenApiInteractionValidator =
    .build
 
 private val strictnessTimeout = FiniteDuration({{entityStrictnessTimeout}}, SECONDS)
-private val validationsWhitelist: List[String] = List("build-info") ::: (if(swaggerEnabled) List("swagger-ui") else Nil)
+private val validationsWhitelist: List[String] = if(devEndpointsEnabled) List("swagger-ui", "build-info") else Nil
 
  def validationFunction(httpRequest: HttpRequest)(route: Route): Route = {
     if (validationsWhitelist.exists(httpRequest.uri.toString.contains(_)))
@@ -120,10 +107,9 @@ pathPrefix("{{projectName}}" / "swagger") {
 getFromResourceDirectory("swagger-ui") ~ getFromFile(tmpFile)
 }
 
-val accessoryRoutes: Route = if (swaggerEnabled)  getBuildInfo ~ swaggerRoute else getBuildInfo
+val devRoutes: Route = getBuildInfo ~ swaggerRoute
 
-
-lazy val routes: Route = accessoryRoutes ~ pathPrefix("{{projectName}}") {
+lazy val appRoutes: Route = pathPrefix("{{projectName}}") {
 toStrictEntity(strictnessTimeout) {
 extractRequest { request =>
 validationFunction(request) {
@@ -132,5 +118,7 @@ validationFunction(request) {
 }
 }
 }
+
+lazy val routes: Route = if (devEndpointsEnabled)  devRoutes ~ appRoutes else appRoutes
 
 }
