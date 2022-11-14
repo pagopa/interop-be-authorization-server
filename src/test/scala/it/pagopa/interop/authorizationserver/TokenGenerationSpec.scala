@@ -7,8 +7,9 @@ import it.pagopa.interop.authorizationmanagement.client.model.{ClientComponentSt
 import it.pagopa.interop.authorizationserver.api.impl.AuthApiMarshallerImpl._
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
 import it.pagopa.interop.authorizationserver.model.{ClientCredentialsResponse, JWTDetailsMessage, TokenType}
-import it.pagopa.interop.authorizationserver.utils.{BaseSpec, SpecHelper}
 import it.pagopa.interop.authorizationserver.utils.SpecData._
+import it.pagopa.interop.authorizationserver.utils.{BaseSpec, SpecHelper}
+import it.pagopa.interop.commons.utils.CORRELATION_ID_HEADER
 import org.scalatest.matchers.should.Matchers._
 import spray.json.JsonWriter
 
@@ -17,7 +18,7 @@ import scala.concurrent.Future
 
 class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTest {
 
-  implicit val context: Seq[(String, String)] = Seq.empty
+  implicit val context: Seq[(String, String)] = Seq(CORRELATION_ID_HEADER -> correlationId)
 
   "Token generation" should {
     "fail on wrong client assertion type" in {

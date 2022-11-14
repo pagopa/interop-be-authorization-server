@@ -8,6 +8,8 @@ import it.pagopa.interop.commons.jwt.model.Token
 import java.util.UUID
 
 object SpecData {
+  val correlationId: String = UUID.randomUUID().toString
+
   val internalToken: Token  = Token(
     serialized = "internal-jwt",
     jti = "internal-jti",
@@ -142,6 +144,7 @@ object SpecData {
 
   val expectedQueueMessage: JWTDetailsMessage = JWTDetailsMessage(
     jwtId = generatedToken.jti,
+    correlationId = Some(correlationId),
     issuedAt = generatedToken.iat * 1000,
     clientId = clientId.toString,
     organizationId = consumerId.toString,
