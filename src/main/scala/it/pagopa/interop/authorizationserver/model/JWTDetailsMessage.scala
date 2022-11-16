@@ -5,6 +5,10 @@ import spray.json._
 
 final case class JWTDetailsMessage(
   jwtId: String,
+  // Correlation ID is mandatory, but it is defined as optional to avoid
+  //  - deserialization failures of previous messages that lack this field
+  //  - impacts on auditing caused by correlation id generation bugs
+  correlationId: Option[String],
   issuedAt: Long,
   clientId: String,
   organizationId: String,
@@ -26,5 +30,5 @@ final case class JWTDetailsMessage(
 }
 
 object JWTDetailsMessage extends SprayJsonSupport with DefaultJsonProtocol {
-  implicit val jwtDetailsMessageFormat: RootJsonFormat[JWTDetailsMessage] = jsonFormat17(JWTDetailsMessage.apply)
+  implicit val jwtDetailsMessageFormat: RootJsonFormat[JWTDetailsMessage] = jsonFormat18(JWTDetailsMessage.apply)
 }

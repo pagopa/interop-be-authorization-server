@@ -33,9 +33,10 @@ import it.pagopa.interop.commons.jwt.service.{ClientAssertionValidator, InteropT
 import it.pagopa.interop.commons.jwt.{JWTConfiguration, JWTInternalTokenConfig}
 import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
 import it.pagopa.interop.commons.ratelimiter.model.{Headers, RateLimitStatus}
+import it.pagopa.interop.commons.utils.AkkaUtils.fastGetOpt
 import it.pagopa.interop.commons.utils.TypeConversions._
 import it.pagopa.interop.commons.utils.errors.{ComponentError, GenericComponentErrors}
-import it.pagopa.interop.commons.utils.{CORRELATION_ID_HEADER, ORGANIZATION_ID_CLAIM, PURPOSE_ID_CLAIM}
+import it.pagopa.interop.commons.utils.{CORRELATION_ID_HEADER, IP_ADDRESS, ORGANIZATION_ID_CLAIM, PURPOSE_ID_CLAIM}
 
 import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
@@ -116,7 +117,7 @@ final case class AuthApiServiceImpl(
     contexts: Seq[(String, String)]
   ): Future[KeyWithClient] =
     authorizationManagementService
-      .getKeyWithClient(clientId, kid)(contexts.filter(_._1 == CORRELATION_ID_HEADER))
+      .getKeyWithClient(clientId, kid)(contexts.filter(c => List(CORRELATION_ID_HEADER, IP_ADDRESS).contains(c._1)))
       .recoverWith {
         case err: AuthorizationApiError[_] if err.code == 404 => Future.failed(KeyNotFound(err.getMessage))
       }
@@ -195,6 +196,7 @@ final case class AuthApiServiceImpl(
   )(implicit contexts: Seq[(String, String)]): Future[Unit] = {
     val jwtDetails = JWTDetailsMessage(
       jwtId = token.jti,
+      correlationId = fastGetOpt(contexts)(CORRELATION_ID_HEADER),
       issuedAt = token.iat * 1000,
       clientId = client.id.toString,
       organizationId = client.consumerId.toString,
