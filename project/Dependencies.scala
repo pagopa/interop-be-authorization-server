@@ -30,7 +30,7 @@ object Dependencies {
     lazy val authorizationManagement =
       namespace %% "interop-be-authorization-management-client" % authorizationManagementVersion
 
-    lazy val commons      = namespace %% "interop-commons-utils"         % commonsVersion
+    lazy val utils        = namespace %% "interop-commons-utils"         % commonsVersion
     lazy val jwt          = namespace %% "interop-commons-jwt"           % commonsVersion
     lazy val queueManager = namespace %% "interop-commons-queue-manager" % commonsVersion
     lazy val rateLimiter  = namespace %% "interop-commons-rate-limiter"  % commonsVersion
@@ -100,7 +100,7 @@ object Dependencies {
       cats.core                      % Compile,
       logback.classic                % Compile,
       mustache.mustache              % Compile,
-      pagopa.commons                 % Compile,
+      pagopa.utils                   % Compile,
       pagopa.jwt                     % Compile,
       pagopa.queueManager            % Compile,
       pagopa.authorizationManagement % Compile,
@@ -113,7 +113,7 @@ object Dependencies {
       scalamock.core                 % Test
     )
     lazy val client: Seq[ModuleID]    =
-      Seq(akka.stream, akka.http, akka.httpJson4s, akka.slf4j, json4s.jackson, json4s.ext, pagopa.commons).map(
+      Seq(akka.stream, akka.http, akka.httpJson4s, akka.slf4j, json4s.jackson, json4s.ext, pagopa.utils).map(
         _ % Compile
       )
   }
