@@ -49,7 +49,7 @@ trait Dependencies {
     new AuthorizationManagementServiceImpl(
       AuthorizationManagementInvoker(blockingEc)(actorSystem.classicSystem),
       AuthorizationTokenGenerationApi(ApplicationConfiguration.authorizationManagementURL)
-    )
+    )(blockingEc)
 
   private def signerService(blockingEc: ExecutionContextExecutor): SignerService = new KMSSignerService(blockingEc)
 

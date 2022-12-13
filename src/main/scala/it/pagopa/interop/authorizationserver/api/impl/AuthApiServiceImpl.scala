@@ -8,7 +8,6 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.data.{NonEmptyList, Validated}
 import cats.implicits._
 import com.typesafe.scalalogging.{Logger, LoggerTakingImplicit}
-import it.pagopa.interop.authorizationmanagement.client.invoker.{ApiError => AuthorizationApiError}
 import it.pagopa.interop.authorizationmanagement.client.model._
 import it.pagopa.interop.authorizationserver.api.AuthApiService
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
@@ -109,9 +108,6 @@ final case class AuthApiServiceImpl(
   ): Future[KeyWithClient] =
     authorizationManagementService
       .getKeyWithClient(clientId, kid)(contexts.filter(c => List(CORRELATION_ID_HEADER, IP_ADDRESS).contains(c._1)))
-      .recoverWith {
-        case err: AuthorizationApiError[_] if err.code == 404 => Future.failed(KeyNotFound(err.getMessage))
-      }
 
   private def generateConsumerToken(client: Client, checker: ClientAssertionChecker, clientAssertion: String)(implicit
     context: Seq[(String, String)]

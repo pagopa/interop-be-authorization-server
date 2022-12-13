@@ -21,8 +21,8 @@ object AuthServerErrors {
   final case class InvalidAssertion(message: String)
       extends ComponentError("0010", s"Invalid client assertion. Reasons: $message")
 
-  final case class KeyNotFound(message: String)
-      extends ComponentError("0011", s"Key not found in client. Reasons: $message")
+  final case class KeyNotFound(clientId: UUID, kid: String)
+      extends ComponentError("0011", s"Key $kid not found for Client $clientId")
 
   final case class InvalidAssertionSignature(clientId: UUID, kid: String, reason: String)
       extends ComponentError(
