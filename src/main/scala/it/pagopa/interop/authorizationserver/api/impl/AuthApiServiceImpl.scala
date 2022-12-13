@@ -40,7 +40,7 @@ import it.pagopa.interop.commons.utils.{CORRELATION_ID_HEADER, IP_ADDRESS, ORGAN
 import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
-import scala.util.{Failure, Success, Try}
+import scala.util.{Success, Try}
 
 final case class AuthApiServiceImpl(
   authorizationManagementService: AuthorizationManagementService,
@@ -70,10 +70,10 @@ final case class AuthApiServiceImpl(
       clientUUID             <- clientId.traverse(_.toUUID)
       clientAssertionRequest <- ValidClientAssertionRequest
         .from(clientAssertion, clientAssertionType, grantType, clientUUID)
-        .recoverWith { case err: InvalidAccessTokenRequest => Failure(InvalidAssertion(err.errors.mkString(","))) }
+        .adaptError { case err: InvalidAccessTokenRequest => InvalidAssertion(err.errors.mkString(",")) }
       checker                <- jwtValidator
         .extractJwtInfo(clientAssertionRequest)
-        .recoverWith { case err => Failure(InvalidAssertion(err.getMessage)) }
+        .adaptError(err => InvalidAssertion(err.getMessage))
     } yield checker
 
     val result: Future[(ClientCredentialsResponse, RateLimitStatus)] = for {
@@ -83,6 +83,9 @@ final case class AuthApiServiceImpl(
       _               <- verifyClientAssertion(keyWithClient, checker)
       rateLimitStatus <- rateLimiter.rateLimiting(keyWithClient.client.consumerId)
       token           <- generateToken(keyWithClient.client, checker, clientAssertion)
+      _ = logger.info(
+        s"Token with jti ${token.jti} generated for client ${keyWithClient.client.id} of type ${keyWithClient.client.kind.toString}"
+      )
     } yield (
       ClientCredentialsResponse(access_token = token.serialized, token_type = Bearer, expires_in = token.expIn.toInt),
       rateLimitStatus
