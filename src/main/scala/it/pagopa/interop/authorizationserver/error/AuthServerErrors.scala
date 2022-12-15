@@ -15,6 +15,9 @@ object AuthServerErrors {
   final case class InactiveEService(state: String)  extends ComponentError("0006", s"E-Service is in state $state")
   final case class InactiveAgreement(state: String) extends ComponentError("0007", s"Agreement is in state $state")
 
+  final object CreateTokenRequestError
+      extends ComponentError("0008", s"Unable to generate a token for the given request")
+
   final case object PurposeIdNotProvided
       extends ComponentError("0009", "Claim purposeId does not exist in this assertion")
 
