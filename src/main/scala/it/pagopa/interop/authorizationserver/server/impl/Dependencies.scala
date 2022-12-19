@@ -17,7 +17,7 @@ import it.pagopa.interop.authorizationserver.api.impl.{
   HealthServiceApiImpl
 }
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
-import it.pagopa.interop.authorizationserver.error.Handlers.serviceCode
+import it.pagopa.interop.authorizationserver.error.ResponseHandlers.serviceCode
 import it.pagopa.interop.authorizationserver.service._
 import it.pagopa.interop.authorizationserver.service.impl._
 import it.pagopa.interop.commons.jwt._

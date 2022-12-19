@@ -12,7 +12,7 @@ import it.pagopa.interop.authorizationmanagement.client.model._
 import it.pagopa.interop.authorizationserver.api.AuthApiService
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
 import it.pagopa.interop.authorizationserver.error.AuthServerErrors._
-import it.pagopa.interop.authorizationserver.error.Handlers.handleTokenGenerationError
+import it.pagopa.interop.authorizationserver.error.ResponseHandlers._
 import it.pagopa.interop.authorizationserver.model.TokenType.Bearer
 import it.pagopa.interop.authorizationserver.model.{
   ClientAssertionDetails,
@@ -40,7 +40,7 @@ import it.pagopa.interop.commons.utils.{CORRELATION_ID_HEADER, IP_ADDRESS, ORGAN
 import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
-import scala.util.{Success, Try}
+import scala.util.Try
 
 final case class AuthApiServiceImpl(
   authorizationManagementService: AuthorizationManagementService,
@@ -92,8 +92,8 @@ final case class AuthApiServiceImpl(
     )
 
     onComplete(result) {
-      handleTokenGenerationError("Token Generation") orElse { case Success((token, rateLimitStatus)) =>
-        complete(StatusCodes.OK, Headers.headersFromStatus(rateLimitStatus), token)
+      createTokenResponse[(ClientCredentialsResponse, RateLimitStatus)]("Token Generation") {
+        case (token, rateLimitStatus) => complete(StatusCodes.OK, Headers.headersFromStatus(rateLimitStatus), token)
       }
     }
   }
