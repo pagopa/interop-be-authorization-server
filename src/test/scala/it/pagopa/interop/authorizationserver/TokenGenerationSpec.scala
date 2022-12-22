@@ -2,10 +2,10 @@ package it.pagopa.interop.authorizationserver
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import it.pagopa.interop.authorizationmanagement.client.invoker.{ApiError => AuthorizationManagementApiError}
 import it.pagopa.interop.authorizationmanagement.client.model.{ClientComponentState, ClientKind}
 import it.pagopa.interop.authorizationserver.api.impl.AuthApiMarshallerImpl._
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
+import it.pagopa.interop.authorizationserver.error.AuthServerErrors.KeyNotFound
 import it.pagopa.interop.authorizationserver.model.{ClientCredentialsResponse, JWTDetailsMessage, TokenType}
 import it.pagopa.interop.authorizationserver.utils.SpecData._
 import it.pagopa.interop.authorizationserver.utils.{BaseSpec, SpecHelper}
@@ -88,9 +88,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
         .getKeyWithClient(_: UUID, _: String)(_: Seq[(String, String)]))
         .expects(clientId, clientAssertionKid, *)
         .once()
-        .returns(
-          Future.failed(AuthorizationManagementApiError(code = 404, message = "something", responseContent = None))
-        )
+        .returns(Future.failed(KeyNotFound(clientId, clientAssertionKid)))
 
       Get() ~> service.createToken(
         Some(clientId.toString),

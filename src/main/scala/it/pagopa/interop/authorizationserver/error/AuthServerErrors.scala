@@ -6,9 +6,6 @@ import java.util.UUID
 
 object AuthServerErrors {
 
-  final case object Forbidden extends ComponentError("0001", s"The user has no access to the requested resource")
-  final case object InternalServerError extends ComponentError("0002", "There was an internal server error")
-
   final case class PurposeNotFound(clientId: UUID, purposeId: UUID)
       extends ComponentError("0003", s"Purpose $purposeId not found for client $clientId")
 
@@ -27,8 +24,8 @@ object AuthServerErrors {
   final case class InvalidAssertion(message: String)
       extends ComponentError("0010", s"Invalid client assertion. Reasons: $message")
 
-  final case class KeyNotFound(message: String)
-      extends ComponentError("0011", s"Key not found in client. Reasons: $message")
+  final case class KeyNotFound(clientId: UUID, kid: String)
+      extends ComponentError("0011", s"Key $kid not found for Client $clientId")
 
   final case class InvalidAssertionSignature(clientId: UUID, kid: String, reason: String)
       extends ComponentError(
