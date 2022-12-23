@@ -30,7 +30,11 @@ object ResponseHandlers extends AkkaResponses {
       case Failure(ex: InvalidAssertion)                         => genericBadRequest(ex, logMessage)
       case Failure(ex: InvalidAssertionSignature)                => genericBadRequest(ex, logMessage)
       case Failure(ex: ratelimiter.error.Errors.TooManyRequests) =>
-        tooManyRequests(TooManyRequests, logMessage, Headers.headersFromStatus(ex.status))
+        tooManyRequests(
+          TooManyRequests,
+          s"Requests limit exceeded for organization ${ex.tenantId}",
+          Headers.headersFromStatus(ex.status)
+        )
       case Failure(ex)                                           => internalServerError(ex, logMessage)
     }
 
