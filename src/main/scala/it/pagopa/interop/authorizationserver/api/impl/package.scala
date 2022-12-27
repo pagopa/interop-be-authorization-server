@@ -7,7 +7,7 @@ import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 package object impl extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val problemErrorFormat: RootJsonFormat[ProblemError] = jsonFormat2(ProblemError)
-  implicit val problemFormat: RootJsonFormat[Problem]           = jsonFormat5(Problem)
+  implicit val problemFormat: RootJsonFormat[Problem]           = jsonFormat6(Problem)
 
   implicit val clientCredentialsResponseFormat: RootJsonFormat[ClientCredentialsResponse] =
     jsonFormat3(ClientCredentialsResponse)
