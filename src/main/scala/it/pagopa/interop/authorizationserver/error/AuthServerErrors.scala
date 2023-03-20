@@ -32,4 +32,8 @@ object AuthServerErrors {
         "0012",
         s"Invalid assertion signature for request with client $clientId and kid $kid. Reason: $reason"
       )
+
+  final case class InvalidClientIdFormat(clientId: String)
+      extends ComponentError("0013", s"Client id $clientId is not a valid UUID")
+
 }

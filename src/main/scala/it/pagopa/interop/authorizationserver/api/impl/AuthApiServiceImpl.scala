@@ -67,7 +67,7 @@ final case class AuthApiServiceImpl(
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
     val getChecker: Try[ClientAssertionChecker] = for {
-      clientUUID             <- clientId.traverse(_.toUUID)
+      clientUUID             <- clientId.traverse(id => id.toUUID.leftMap(_ => InvalidClientIdFormat(id)))
       clientAssertionRequest <- ValidClientAssertionRequest
         .from(clientAssertion, clientAssertionType, grantType, clientUUID)
         .adaptError { case err: InvalidAccessTokenRequest => InvalidAssertion(err.errors.mkString(",")) }
