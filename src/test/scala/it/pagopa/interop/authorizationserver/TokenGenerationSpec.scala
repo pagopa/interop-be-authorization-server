@@ -137,6 +137,17 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       }
     }
 
+    "fail on wrong purpose id format" in {
+      Get() ~> service.createToken(
+        Some(clientId.toString),
+        clientAssertionWithWrongPurposeId,
+        clientAssertionType,
+        grantType
+      ) ~> check {
+        status shouldEqual StatusCodes.BadRequest
+      }
+    }
+
     "succeed even if publish on queue fails" in {
       mockKeyRetrieve()
       mockConsumerTokenGeneration()

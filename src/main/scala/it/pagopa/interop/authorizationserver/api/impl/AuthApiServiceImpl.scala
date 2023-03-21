@@ -78,8 +78,7 @@ final case class AuthApiServiceImpl(
 
     val result: Future[(ClientCredentialsResponse, RateLimitStatus)] = for {
       checker         <- getChecker.toFuture
-      clientUUID      <- checker.subject.toUUID.leftMap(_ => InvalidSubjectFormat(checker.subject)).toFuture
-      keyWithClient   <- getTokenGenerationBundle(clientUUID, checker.kid)
+      keyWithClient   <- getTokenGenerationBundle(checker.subject, checker.kid)
       _               <- verifyClientAssertion(keyWithClient, checker)
       rateLimitStatus <- rateLimiter.rateLimiting(keyWithClient.client.consumerId)
       token           <- generateToken(keyWithClient.client, checker, clientAssertion)
@@ -116,12 +115,11 @@ final case class AuthApiServiceImpl(
     context: Seq[(String, String)]
   ): Future[Token] = for {
     purposeId                 <- checker.purposeId.toFuture(PurposeIdNotProvided)
-    purposeUuid               <- purposeId.toFutureUUID
     purpose                   <- client.purposes
-      .find(_.states.purpose.purposeId == purposeUuid)
-      .toFuture(PurposeNotFound(client.id, purposeUuid))
+      .find(_.states.purpose.purposeId == purposeId)
+      .toFuture(PurposeNotFound(client.id, purposeId))
     (audience, tokenDuration) <- checkConsumerClientValidity(client, purpose)
-    customClaims = Map(PURPOSE_ID_CLAIM -> purposeId)
+    customClaims = Map(PURPOSE_ID_CLAIM -> purposeId.toString)
     token <- interopTokenGenerator
       .generate(
         clientAssertion = clientAssertion,
@@ -208,7 +206,7 @@ final case class AuthApiServiceImpl(
         algorithm = clientAssertionChecker.jwt.getHeader.getAlgorithm.getName,
         keyId = clientAssertionChecker.kid,
         issuer = clientAssertionChecker.jwt.getJWTClaimsSet.getIssuer,
-        subject = clientAssertionChecker.subject,
+        subject = clientAssertionChecker.subject.toString,
         audience = clientAssertionChecker.jwt.getJWTClaimsSet.getAudience.asScala.mkString(","),
         expirationTime = clientAssertionChecker.jwt.getJWTClaimsSet.getExpirationTime.getTime
       )
