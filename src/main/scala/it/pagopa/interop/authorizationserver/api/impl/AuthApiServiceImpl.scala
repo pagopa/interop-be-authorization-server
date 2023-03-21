@@ -78,7 +78,7 @@ final case class AuthApiServiceImpl(
 
     val result: Future[(ClientCredentialsResponse, RateLimitStatus)] = for {
       checker         <- getChecker.toFuture
-      clientUUID      <- checker.subject.toFutureUUID
+      clientUUID      <- checker.subject.toUUID.leftMap(_ => InvalidSubjectFormat(checker.subject)).toFuture
       keyWithClient   <- getTokenGenerationBundle(clientUUID, checker.kid)
       _               <- verifyClientAssertion(keyWithClient, checker)
       rateLimitStatus <- rateLimiter.rateLimiting(keyWithClient.client.consumerId)

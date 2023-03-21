@@ -36,4 +36,7 @@ object AuthServerErrors {
   final case class InvalidClientIdFormat(clientId: String)
       extends ComponentError("0013", s"Client id $clientId is not a valid UUID")
 
+  final case class InvalidSubjectFormat(subject: String)
+      extends ComponentError("0014", s"Subject $subject is not a valid UUID")
+
 }

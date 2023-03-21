@@ -30,6 +30,7 @@ object ResponseHandlers extends AkkaResponses {
       case Failure(ex: InvalidAssertion)                         => genericBadRequest(ex, logMessage)
       case Failure(ex: InvalidAssertionSignature)                => genericBadRequest(ex, logMessage)
       case Failure(ex: InvalidClientIdFormat)                    => genericBadRequest(ex, logMessage)
+      case Failure(ex: InvalidSubjectFormat)                     => genericBadRequest(ex, logMessage)
       case Failure(ex: ratelimiter.error.Errors.TooManyRequests) =>
         tooManyRequests(
           TooManyRequests,
