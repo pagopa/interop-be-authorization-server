@@ -113,6 +113,41 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       }
     }
 
+    "fail on wrong client id format" in {
+      Get() ~> service.createToken(
+        Some("definitely-not-an-uuid"),
+        validClientAssertion,
+        clientAssertionType,
+        grantType
+      ) ~> check {
+        status shouldEqual StatusCodes.BadRequest
+      }
+    }
+
+    // This case will actually be intercepted by a previous check (comparison with client id)
+    // Writing this test to cover future changes
+    "fail on wrong jwt subject format" in {
+      Get() ~> service.createToken(
+        Some(clientId.toString),
+        clientAssertionWithWrongSubject,
+        clientAssertionType,
+        grantType
+      ) ~> check {
+        status shouldEqual StatusCodes.BadRequest
+      }
+    }
+
+    "fail on wrong purpose id format" in {
+      Get() ~> service.createToken(
+        Some(clientId.toString),
+        clientAssertionWithWrongPurposeId,
+        clientAssertionType,
+        grantType
+      ) ~> check {
+        status shouldEqual StatusCodes.BadRequest
+      }
+    }
+
     "succeed even if publish on queue fails" in {
       mockKeyRetrieve()
       mockConsumerTokenGeneration()
