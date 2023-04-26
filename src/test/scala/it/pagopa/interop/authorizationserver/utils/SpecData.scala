@@ -4,11 +4,13 @@ import it.pagopa.interop.authorizationmanagement.client.model._
 import it.pagopa.interop.authorizationserver.model.{ClientAssertionDetails, JWTDetailsMessage}
 import it.pagopa.interop.commons.jwt.JWTConfiguration
 import it.pagopa.interop.commons.jwt.model.Token
+import java.time.{OffsetDateTime, ZoneOffset}
 
 import java.util.UUID
 
 object SpecData {
   val correlationId: String = UUID.randomUUID().toString
+  final val timestamp       = OffsetDateTime.of(2022, 12, 31, 11, 22, 33, 44, ZoneOffset.UTC)
 
   val internalToken: Token  = Token(
     serialized = "internal-jwt",
@@ -136,6 +138,7 @@ object SpecData {
       )
     ),
     relationships = Set.empty,
+    createdAt = timestamp,
     kind = kind
   )
 
