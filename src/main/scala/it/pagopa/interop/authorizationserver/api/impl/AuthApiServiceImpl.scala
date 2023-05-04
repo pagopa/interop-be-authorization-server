@@ -35,7 +35,13 @@ import it.pagopa.interop.commons.ratelimiter.model.{Headers, RateLimitStatus}
 import it.pagopa.interop.commons.utils.AkkaUtils.fastGetOpt
 import it.pagopa.interop.commons.utils.TypeConversions._
 import it.pagopa.interop.commons.utils.errors.ComponentError
-import it.pagopa.interop.commons.utils.{CORRELATION_ID_HEADER, IP_ADDRESS, ORGANIZATION_ID_CLAIM, PURPOSE_ID_CLAIM}
+import it.pagopa.interop.commons.utils.{
+  CORRELATION_ID_HEADER,
+  DIGEST_CLAIM,
+  IP_ADDRESS,
+  ORGANIZATION_ID_CLAIM,
+  PURPOSE_ID_CLAIM
+}
 
 import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
@@ -119,7 +125,9 @@ final case class AuthApiServiceImpl(
       .find(_.states.purpose.purposeId == purposeId)
       .toFuture(PurposeNotFound(client.id, purposeId))
     (audience, tokenDuration) <- checkConsumerClientValidity(client, purpose)
-    customClaims = Map(PURPOSE_ID_CLAIM -> purposeId.toString)
+    customClaims = checker.digest
+      .fold(Map.empty[String, AnyRef])(digest => Map(DIGEST_CLAIM -> digest.toJavaMap))
+      .updated(PURPOSE_ID_CLAIM, purposeId.toString)
     token <- interopTokenGenerator
       .generate(
         clientAssertion = clientAssertion,
@@ -129,7 +137,7 @@ final case class AuthApiServiceImpl(
         validityDurationInSeconds = tokenDuration.toLong,
         isM2M = false
       )
-    _     <- sendToQueue(token, client, purpose, checker)
+    _ <- sendToQueue(token, client, purpose, checker)
   } yield token
 
   private def generateApiToken(client: Client, clientAssertion: String): Future[Token] =
