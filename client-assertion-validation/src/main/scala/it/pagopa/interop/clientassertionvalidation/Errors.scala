@@ -9,8 +9,6 @@ object Errors {
   final case class PurposeNotFound(clientId: UUID, purposeId: UUID)
       extends ComponentError("0003", s"Purpose $purposeId not found for client $clientId")
 
-//  final case class InactivePlatformState(clientId: UUID, errorMessages: List[String])
-//      extends ComponentError("0004", s"Non-active state for Client $clientId: ${errorMessages.mkString(", ")}")
   final case class InactivePlatformState(clientId: UUID, reasons: ComponentError*)
       extends ComponentError(
         "0004",
@@ -24,7 +22,6 @@ object Errors {
   final case object PurposeIdNotProvided
       extends ComponentError("0009", "Claim purposeId does not exist in this assertion")
 
-  // TODO This may be too generic
   final case class InvalidAssertion(message: String)
       extends ComponentError("0010", s"Invalid client assertion. Reasons: $message")
 
