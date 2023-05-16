@@ -4,14 +4,11 @@ import akka.http.scaladsl.marshalling.ToEntityMarshaller
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.{complete, onComplete}
 import akka.http.scaladsl.server.Route
-import cats.data.Validated.{Invalid, Valid}
-import cats.data.{NonEmptyList, Validated}
 import cats.implicits._
 import com.typesafe.scalalogging.{Logger, LoggerTakingImplicit}
 import it.pagopa.interop.authorizationmanagement.client.model._
 import it.pagopa.interop.authorizationserver.api.AuthApiService
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
-import it.pagopa.interop.authorizationserver.error.AuthServerErrors._
 import it.pagopa.interop.authorizationserver.error.ResponseHandlers._
 import it.pagopa.interop.authorizationserver.model.TokenType.Bearer
 import it.pagopa.interop.authorizationserver.model.{
@@ -20,13 +17,10 @@ import it.pagopa.interop.authorizationserver.model.{
   JWTDetailsMessage,
   Problem
 }
-import it.pagopa.interop.authorizationserver.service.{
-  AuthorizationManagementInvoker,
-  AuthorizationManagementService,
-  QueueService
-}
-import it.pagopa.interop.commons.jwt.errors.InvalidAccessTokenRequest
-import it.pagopa.interop.commons.jwt.model.{ClientAssertionChecker, Token, ValidClientAssertionRequest}
+import it.pagopa.interop.authorizationserver.service.{AuthorizationManagementService, QueueService}
+import it.pagopa.interop.clientassertionvalidation.Errors.{PurposeIdNotProvided, PurposeNotFound}
+import it.pagopa.interop.clientassertionvalidation.Validation._
+import it.pagopa.interop.commons.jwt.model.{ClientAssertionChecker, Token}
 import it.pagopa.interop.commons.jwt.service.{ClientAssertionValidator, InteropTokenGenerator}
 import it.pagopa.interop.commons.jwt.{JWTConfiguration, JWTInternalTokenConfig}
 import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
@@ -34,19 +28,11 @@ import it.pagopa.interop.commons.ratelimiter.RateLimiter
 import it.pagopa.interop.commons.ratelimiter.model.{Headers, RateLimitStatus}
 import it.pagopa.interop.commons.utils.AkkaUtils.fastGetOpt
 import it.pagopa.interop.commons.utils.TypeConversions._
-import it.pagopa.interop.commons.utils.errors.ComponentError
-import it.pagopa.interop.commons.utils.{
-  CORRELATION_ID_HEADER,
-  DIGEST_CLAIM,
-  IP_ADDRESS,
-  ORGANIZATION_ID_CLAIM,
-  PURPOSE_ID_CLAIM
-}
+import it.pagopa.interop.commons.utils._
 
 import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 final case class AuthApiServiceImpl(
   authorizationManagementService: AuthorizationManagementService,
@@ -72,21 +58,14 @@ final case class AuthApiServiceImpl(
     toEntityMarshallerClientCredentialsResponse: ToEntityMarshaller[ClientCredentialsResponse],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
-    val getChecker: Try[ClientAssertionChecker] = for {
-      clientUUID             <- clientId.traverse(id => id.toUUID.leftMap(_ => InvalidClientIdFormat(id)))
-      clientAssertionRequest <- ValidClientAssertionRequest
-        .from(clientAssertion, clientAssertionType, grantType, clientUUID)
-        .adaptError { case err: InvalidAccessTokenRequest => InvalidAssertion(err.errors.mkString(",")) }
-      checker                <- jwtValidator
-        .extractJwtInfo(clientAssertionRequest)
-        .adaptError(err => InvalidAssertion(err.getMessage))
-    } yield checker
-
     val result: Future[(ClientCredentialsResponse, RateLimitStatus)] = for {
-      checker         <- getChecker.toFuture
+      checker         <- validateClientAssertion(clientId, clientAssertion, clientAssertionType, grantType)(
+        jwtValidator
+      ).toFuture
       keyWithClient   <- getTokenGenerationBundle(checker.subject, checker.kid)
-      _               <- verifyClientAssertion(keyWithClient, checker)
+      _               <- verifyClientAssertionSignature(keyWithClient, checker).toFuture
       rateLimitStatus <- rateLimiter.rateLimiting(keyWithClient.client.consumerId)
+      _               <- verifyPlatformState(keyWithClient.client, checker).toFuture
       token           <- generateToken(keyWithClient.client, checker, clientAssertion)
       _ = logger.info(
         s"Token with jti ${token.jti} generated for client ${keyWithClient.client.id} of type ${keyWithClient.client.kind.toString}"
@@ -120,21 +99,20 @@ final case class AuthApiServiceImpl(
   private def generateConsumerToken(client: Client, checker: ClientAssertionChecker, clientAssertion: String)(implicit
     context: Seq[(String, String)]
   ): Future[Token] = for {
-    purposeId                 <- checker.purposeId.toFuture(PurposeIdNotProvided)
-    purpose                   <- client.purposes
+    purposeId <- checker.purposeId.toFuture(PurposeIdNotProvided)
+    purpose   <- client.purposes
       .find(_.states.purpose.purposeId == purposeId)
       .toFuture(PurposeNotFound(client.id, purposeId))
-    (audience, tokenDuration) <- checkConsumerClientValidity(client, purpose)
     customClaims = checker.digest
       .fold(Map.empty[String, AnyRef])(digest => Map(DIGEST_CLAIM -> digest.toJavaMap))
       .updated(PURPOSE_ID_CLAIM, purposeId.toString)
     token <- interopTokenGenerator
       .generate(
         clientAssertion = clientAssertion,
-        audience = audience.toList,
+        audience = purpose.states.eservice.audience.toList,
         customClaims = customClaims,
         tokenIssuer = ApplicationConfiguration.generatedJwtIssuer,
-        validityDurationInSeconds = tokenDuration.toLong,
+        validityDurationInSeconds = purpose.states.eservice.voucherLifespan.toLong,
         isM2M = false
       )
     _ <- sendToQueue(token, client, purpose, checker)
@@ -150,39 +128,6 @@ final case class AuthApiServiceImpl(
         validityDurationInSeconds = ApplicationConfiguration.generatedM2mJwtDuration.toLong,
         isM2M = true
       )
-
-  private def checkConsumerClientValidity(client: Client, purpose: Purpose): Future[(Seq[String], Int)] = {
-    def checkClientStates(statesChain: ClientStatesChain): Future[Unit] = {
-
-      def validate(
-        state: ClientComponentState,
-        error: ComponentError
-      ): Validated[NonEmptyList[ComponentError], ClientComponentState] =
-        Validated.validNel(state).ensureOr(_ => NonEmptyList.one(error))(_ == ClientComponentState.ACTIVE)
-
-      val validation
-        : Validated[NonEmptyList[ComponentError], (ClientComponentState, ClientComponentState, ClientComponentState)] =
-        (
-          validate(statesChain.purpose.state, InactivePurpose(statesChain.purpose.state.toString)),
-          validate(statesChain.eservice.state, InactiveEService(statesChain.eservice.state.toString)),
-          validate(statesChain.agreement.state, InactiveAgreement(statesChain.agreement.state.toString))
-        ).tupled
-
-      validation match {
-        case Invalid(e) => Future.failed(InactiveClient(client.id, e.map(_.getMessage).toList))
-        case Valid(_)   => Future.successful(())
-      }
-
-    }
-
-    checkClientStates(purpose.states).as((purpose.states.eservice.audience, purpose.states.eservice.voucherLifespan))
-  }
-
-  private def verifyClientAssertion(keyWithClient: KeyWithClient, checker: ClientAssertionChecker): Future[Unit] =
-    checker
-      .verify(AuthorizationManagementInvoker.serializeKey(keyWithClient.key))
-      .toFuture
-      .recoverWith(ex => Future.failed(InvalidAssertionSignature(keyWithClient.client.id, checker.kid, ex.getMessage)))
 
   private def sendToQueue(
     token: Token,

@@ -93,6 +93,16 @@ lazy val client = project
     Docker / publish    := {}
   )
 
+lazy val clientAssertionValidation = project
+  .in(file("client-assertion-validation"))
+  .settings(
+    name                := "interop-be-client-assertion-validation",
+    libraryDependencies := Dependencies.Jars.clientAssertionValidation,
+    scalafmtOnCompile   := true,
+    Docker / publish    := {}
+  )
+//  .setupBuildInfo
+
 lazy val root = (project in file("."))
   .settings(
     name                        := "interop-be-authorization-server",
@@ -110,7 +120,7 @@ lazy val root = (project in file("."))
     dockerCommands += Cmd("LABEL", s"org.opencontainers.image.source https://github.com/pagopa/${name.value}")
   )
   .aggregate(client)
-  .dependsOn(generated)
+  .dependsOn(generated, clientAssertionValidation)
   .enablePlugins(JavaAppPackaging)
   .enablePlugins(DockerPlugin)
   .enablePlugins(NoPublishPlugin)

@@ -76,14 +76,14 @@ object Dependencies {
   }
 
   object Jars {
-    lazy val overrides: Seq[ModuleID] =
+    lazy val overrides: Seq[ModuleID]                 =
       Seq(
         jackson.annotations % Compile,
         jackson.core        % Compile,
         jackson.databind    % Compile,
         jackson.scalaModule % Compile
       )
-    lazy val `server`: Seq[ModuleID]  = Seq(
+    lazy val `server`: Seq[ModuleID]                  = Seq(
       // For making Java 12 happy
       "javax.annotation"             % "javax.annotation-api" % "1.3.2" % "compile",
       //
@@ -103,7 +103,7 @@ object Dependencies {
       pagopa.utils                   % Compile,
       pagopa.jwt                     % Compile,
       pagopa.queueManager            % Compile,
-      pagopa.authorizationManagement % Compile,
+//      pagopa.authorizationManagement % Compile,
       pagopa.rateLimiter             % Compile,
       pagopa.signer                  % Compile,
       akka.httpTestkit               % Test,
@@ -112,9 +112,11 @@ object Dependencies {
       scalatest.core                 % Test,
       scalamock.core                 % Test
     )
-    lazy val client: Seq[ModuleID]    =
+    lazy val client: Seq[ModuleID]                    =
       Seq(akka.stream, akka.http, akka.httpJson4s, akka.slf4j, json4s.jackson, json4s.ext, pagopa.utils).map(
         _ % Compile
       )
+    lazy val clientAssertionValidation: Seq[ModuleID] =
+      Seq(pagopa.jwt, pagopa.authorizationManagement).map(_ % Compile)
   }
 }
