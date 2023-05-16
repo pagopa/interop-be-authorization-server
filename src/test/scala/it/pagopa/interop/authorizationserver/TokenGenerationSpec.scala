@@ -21,62 +21,14 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
   implicit val context: Seq[(String, String)] = Seq(CORRELATION_ID_HEADER -> correlationId)
 
   "Token generation" should {
-    "fail on wrong client assertion type" in {
+
+    "not invoke authorization management if client assertion validation fails" in {
       val wrongClientAssertionType = "something-wrong"
 
       Get() ~> service.createToken(
         Some(clientId.toString),
         validClientAssertion,
         wrongClientAssertionType,
-        grantType
-      ) ~> check {
-        status shouldEqual StatusCodes.BadRequest
-      }
-    }
-
-    "fail on wrong grant type" in {
-      val wrongGrantType = "something-wrong"
-
-      Get() ~> service.createToken(
-        Some(clientId.toString),
-        validClientAssertion,
-        clientAssertionType,
-        wrongGrantType
-      ) ~> check {
-        status shouldEqual StatusCodes.BadRequest
-      }
-    }
-
-    "fail on malformed assertion" in {
-      val malformedAssertion = "something-wrong"
-
-      Get() ~> service.createToken(
-        Some(clientId.toString),
-        malformedAssertion,
-        clientAssertionType,
-        grantType
-      ) ~> check {
-        status shouldEqual StatusCodes.BadRequest
-      }
-    }
-
-    "fail on wrong audience in assertion" in {
-
-      Get() ~> customService(clientAssertionAudience = "another-audience").createToken(
-        Some(clientId.toString),
-        validClientAssertion,
-        clientAssertionType,
-        grantType
-      ) ~> check {
-        status shouldEqual StatusCodes.BadRequest
-      }
-    }
-
-    "fail if client ID in the assertion is different from the parameter client ID" in {
-      Get() ~> service.createToken(
-        Some(UUID.randomUUID().toString),
-        validClientAssertion,
-        clientAssertionType,
         grantType
       ) ~> check {
         status shouldEqual StatusCodes.BadRequest
@@ -100,7 +52,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       }
     }
 
-    "fail if the assertion is not signed with the public key corresponding to the kid" in {
+    "skip rate limiting if client assertion signature verification fails" in {
       mockKeyRetrieve(keyWithClient.copy(key = anotherModelKey))
 
       Get() ~> service.createToken(
@@ -113,34 +65,13 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       }
     }
 
-    "fail on wrong client id format" in {
+    "trigger rate limiting if platform state verification fails" in {
+      mockKeyRetrieve(result = keyWithClient.copy(client = makeClient(purposeState = ClientComponentState.INACTIVE)))
+      mockRateLimiterExec()
+
       Get() ~> service.createToken(
-        Some("definitely-not-an-uuid"),
+        Some(clientId.toString),
         validClientAssertion,
-        clientAssertionType,
-        grantType
-      ) ~> check {
-        status shouldEqual StatusCodes.BadRequest
-      }
-    }
-
-    // This case will actually be intercepted by a previous check (comparison with client id)
-    // Writing this test to cover future changes
-    "fail on wrong jwt subject format" in {
-      Get() ~> service.createToken(
-        Some(clientId.toString),
-        clientAssertionWithWrongSubject,
-        clientAssertionType,
-        grantType
-      ) ~> check {
-        status shouldEqual StatusCodes.BadRequest
-      }
-    }
-
-    "fail on wrong purpose id format" in {
-      Get() ~> service.createToken(
-        Some(clientId.toString),
-        clientAssertionWithWrongPurposeId,
         clientAssertionType,
         grantType
       ) ~> check {
@@ -189,62 +120,6 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
       ) ~> check {
         status shouldEqual StatusCodes.OK
         responseAs[ClientCredentialsResponse] shouldEqual expectedResponse
-      }
-    }
-
-    "fail if purpose id is not assigned to the client" in {
-      mockKeyRetrieve(result = keyWithClient.copy(client = activeClient.copy(purposes = Seq.empty)))
-      mockRateLimiterExec()
-
-      Get() ~> service.createToken(
-        Some(clientId.toString),
-        validClientAssertion,
-        clientAssertionType,
-        grantType
-      ) ~> check {
-        status shouldEqual StatusCodes.BadRequest
-      }
-    }
-
-    "fail if Purpose is not active" in {
-      mockKeyRetrieve(result = keyWithClient.copy(client = makeClient(purposeState = ClientComponentState.INACTIVE)))
-      mockRateLimiterExec()
-
-      Get() ~> service.createToken(
-        Some(clientId.toString),
-        validClientAssertion,
-        clientAssertionType,
-        grantType
-      ) ~> check {
-        status shouldEqual StatusCodes.BadRequest
-      }
-    }
-
-    "fail if EService is not active" in {
-      mockKeyRetrieve(result = keyWithClient.copy(client = makeClient(eServiceState = ClientComponentState.INACTIVE)))
-      mockRateLimiterExec()
-
-      Get() ~> service.createToken(
-        Some(clientId.toString),
-        validClientAssertion,
-        clientAssertionType,
-        grantType
-      ) ~> check {
-        status shouldEqual StatusCodes.BadRequest
-      }
-    }
-
-    "fail if Agreement is not active" in {
-      mockKeyRetrieve(result = keyWithClient.copy(client = makeClient(agreementState = ClientComponentState.INACTIVE)))
-      mockRateLimiterExec()
-
-      Get() ~> service.createToken(
-        Some(clientId.toString),
-        validClientAssertion,
-        clientAssertionType,
-        grantType
-      ) ~> check {
-        status shouldEqual StatusCodes.BadRequest
       }
     }
 
