@@ -103,7 +103,7 @@ object Dependencies {
       pagopa.utils                   % Compile,
       pagopa.jwt                     % Compile,
       pagopa.queueManager            % Compile,
-//      pagopa.authorizationManagement % Compile,
+      pagopa.authorizationManagement % Compile,
       pagopa.rateLimiter             % Compile,
       pagopa.signer                  % Compile,
       akka.httpTestkit               % Test,
@@ -117,6 +117,6 @@ object Dependencies {
         _ % Compile
       )
     lazy val clientAssertionValidation: Seq[ModuleID] =
-      Seq(pagopa.jwt, pagopa.authorizationManagement).map(_ % Compile)
+      Seq(pagopa.jwt % Compile, pagopa.authorizationManagement % Compile, scalatest.core % Test)
   }
 }

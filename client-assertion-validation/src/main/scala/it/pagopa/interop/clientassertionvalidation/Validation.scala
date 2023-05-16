@@ -77,7 +77,7 @@ object Validation {
       ).tupled
 
     validation match {
-      case Invalid(e) => Left(InactiveClient(client.id, e.map(_.getMessage).toList))
+      case Invalid(e) => Left(InactivePlatformState(client.id, e.toList:_*))
       case Valid(_)   => Right(())
     }
   }

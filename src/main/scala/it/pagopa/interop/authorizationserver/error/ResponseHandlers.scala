@@ -24,7 +24,7 @@ object ResponseHandlers extends AkkaResponses {
       case Failure(ex: PurposeNotFound)                          => genericBadRequest(ex, logMessage)
       case Failure(ex: PurposeIdNotProvided.type)                => genericBadRequest(ex, logMessage)
       case Failure(ex: KeyNotFound)                              => genericBadRequest(ex, logMessage)
-      case Failure(ex: InactiveClient)                           => genericBadRequest(ex, logMessage)
+      case Failure(ex: InactivePlatformState)                    => genericBadRequest(ex, logMessage)
       case Failure(ex: InactivePurpose)                          => genericBadRequest(ex, logMessage)
       case Failure(ex: InactiveEService)                         => genericBadRequest(ex, logMessage)
       case Failure(ex: InactiveAgreement)                        => genericBadRequest(ex, logMessage)

@@ -9,8 +9,14 @@ object Errors {
   final case class PurposeNotFound(clientId: UUID, purposeId: UUID)
       extends ComponentError("0003", s"Purpose $purposeId not found for client $clientId")
 
-  final case class InactiveClient(clientId: UUID, errorMessages: List[String])
-      extends ComponentError("0004", s"Client $clientId is inactive: ${errorMessages.mkString(", ")}")
+//  final case class InactivePlatformState(clientId: UUID, errorMessages: List[String])
+//      extends ComponentError("0004", s"Non-active state for Client $clientId: ${errorMessages.mkString(", ")}")
+  final case class InactivePlatformState(clientId: UUID, reasons: ComponentError*)
+      extends ComponentError(
+        "0004",
+        s"Non-active state for Client $clientId: ${reasons.map(_.getMessage).mkString(", ")}"
+      )
+
   final case class InactivePurpose(state: String)   extends ComponentError("0005", s"Purpose is in state $state")
   final case class InactiveEService(state: String)  extends ComponentError("0006", s"E-Service is in state $state")
   final case class InactiveAgreement(state: String) extends ComponentError("0007", s"Agreement is in state $state")
