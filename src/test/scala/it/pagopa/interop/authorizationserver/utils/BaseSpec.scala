@@ -8,6 +8,7 @@ import it.pagopa.interop.authorizationserver.api.AuthApiService
 import it.pagopa.interop.authorizationserver.api.impl.{AuthApiServiceImpl, _}
 import it.pagopa.interop.authorizationserver.model.ClientCredentialsResponse
 import it.pagopa.interop.authorizationserver.service.{AuthorizationManagementService, QueueService}
+import it.pagopa.interop.clientassertionvalidation.SpecData.clientAssertionAudience
 import it.pagopa.interop.commons.jwt.service.impl.{DefaultClientAssertionValidator, getClaimsVerifier}
 import it.pagopa.interop.commons.jwt.service.{ClientAssertionValidator, InteropTokenGenerator}
 import it.pagopa.interop.commons.jwt.{KID, PublicKeysHolder, SerializedKey}
@@ -35,7 +36,7 @@ trait BaseSpec extends AnyWordSpecLike with SprayJsonSupport with DefaultJsonPro
   def service(implicit ec: ExecutionContext): AuthApiService = customService()
 
   def customService(
-    clientAssertionAudience: String = SpecData.clientAssertionAudience
+    clientAssertionAudience: String = clientAssertionAudience
   )(implicit ec: ExecutionContext): AuthApiService =
     AuthApiServiceImpl(
       authorizationManagementService = mockAuthorizationManagementService,

@@ -11,6 +11,8 @@ ThisBuild / githubOwner       := "pagopa"
 ThisBuild / githubRepository  := "interop-be-authorization-server"
 ThisBuild / resolvers += Resolver.githubPackages("pagopa")
 
+val clientAssertionValidationModuleName = "client-assertion-validation"
+
 lazy val generateCode = taskKey[Unit]("A task for generating the code starting from the swagger definition")
 
 val packagePrefix = settingKey[String]("The package prefix derived from the uservice name")
@@ -61,6 +63,7 @@ cleanFiles += baseDirectory.value / "generated" / "src"
 cleanFiles += baseDirectory.value / "generated" / "target"
 cleanFiles += baseDirectory.value / "client" / "src"
 cleanFiles += baseDirectory.value / "client" / "target"
+cleanFiles += baseDirectory.value / clientAssertionValidationModuleName / "target"
 
 val runStandalone = inputKey[Unit]("Run the app using standalone configuration")
 runStandalone := {
@@ -94,14 +97,13 @@ lazy val client = project
   )
 
 lazy val clientAssertionValidation = project
-  .in(file("client-assertion-validation"))
+  .in(file(clientAssertionValidationModuleName))
   .settings(
     name                := "interop-be-client-assertion-validation",
     libraryDependencies := Dependencies.Jars.clientAssertionValidation,
     scalafmtOnCompile   := true,
     Docker / publish    := {}
   )
-//  .setupBuildInfo
 
 lazy val root = (project in file("."))
   .settings(
@@ -119,8 +121,8 @@ lazy val root = (project in file("."))
     libraryDependencies         := Dependencies.Jars.`server`,
     dockerCommands += Cmd("LABEL", s"org.opencontainers.image.source https://github.com/pagopa/${name.value}")
   )
-  .aggregate(client)
-  .dependsOn(generated, clientAssertionValidation)
+  .aggregate(client, clientAssertionValidation)
+  .dependsOn(generated, clientAssertionValidation, clientAssertionValidation % "test->test")
   .enablePlugins(JavaAppPackaging)
   .enablePlugins(DockerPlugin)
   .enablePlugins(NoPublishPlugin)

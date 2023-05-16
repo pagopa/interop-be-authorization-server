@@ -5,6 +5,7 @@ import it.pagopa.interop.authorizationmanagement.client.model.KeyWithClient
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
 import it.pagopa.interop.authorizationserver.model.JWTDetailsMessage
 import it.pagopa.interop.authorizationserver.utils.SpecData._
+import it.pagopa.interop.clientassertionvalidation.SpecData._
 import it.pagopa.interop.commons.logging.ContextFieldsToLog
 import it.pagopa.interop.commons.ratelimiter.model.RateLimitStatus
 import it.pagopa.interop.commons.utils.{ORGANIZATION_ID_CLAIM, PURPOSE_ID_CLAIM}
