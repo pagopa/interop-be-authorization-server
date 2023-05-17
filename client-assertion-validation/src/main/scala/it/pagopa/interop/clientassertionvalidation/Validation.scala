@@ -18,8 +18,7 @@ object Validation {
     clientAssertion: String,
     clientAssertionType: String,
     grantType: String
-  )(jwtValidator: ClientAssertionValidator) // TODO Check if jwtValidator can be removed from params
-    : Either[ComponentError, ClientAssertionChecker] = {
+  )(jwtValidator: ClientAssertionValidator): Either[ComponentError, ClientAssertionChecker] = {
     for {
       clientUUID             <- clientId.traverse(id => id.toUUID.toEither.leftMap(_ => InvalidClientIdFormat(id)))
       clientAssertionRequest <- ValidClientAssertionRequest
