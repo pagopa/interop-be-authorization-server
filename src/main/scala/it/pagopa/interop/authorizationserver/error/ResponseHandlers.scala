@@ -4,7 +4,6 @@ import akka.http.scaladsl.server.{Route, StandardRoute}
 import com.typesafe.scalalogging.LoggerTakingImplicit
 import it.pagopa.interop.authorizationserver.error.AuthServerErrors._
 import it.pagopa.interop.clientassertionvalidation.Errors.ClientAssertionValidationError
-//import it.pagopa.interop.clientassertionvalidation.Errors._
 import it.pagopa.interop.commons.logging.ContextFieldsToLog
 import it.pagopa.interop.commons.ratelimiter
 import it.pagopa.interop.commons.ratelimiter.model.Headers
