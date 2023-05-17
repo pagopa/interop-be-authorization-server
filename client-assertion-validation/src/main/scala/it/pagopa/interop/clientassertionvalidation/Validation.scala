@@ -9,7 +9,6 @@ import it.pagopa.interop.commons.jwt.errors.InvalidAccessTokenRequest
 import it.pagopa.interop.commons.jwt.model.{ClientAssertionChecker, ValidClientAssertionRequest}
 import it.pagopa.interop.commons.jwt.service.ClientAssertionValidator
 import it.pagopa.interop.commons.utils.TypeConversions._
-import it.pagopa.interop.commons.utils.errors.ComponentError
 
 object Validation {
 
@@ -18,7 +17,7 @@ object Validation {
     clientAssertion: String,
     clientAssertionType: String,
     grantType: String
-  )(jwtValidator: ClientAssertionValidator): Either[ComponentError, ClientAssertionChecker] = {
+  )(jwtValidator: ClientAssertionValidator): Either[ClientAssertionValidationError, ClientAssertionChecker] = {
     for {
       clientUUID             <- clientId.traverse(id => id.toUUID.toEither.leftMap(_ => InvalidClientIdFormat(id)))
       clientAssertionRequest <- ValidClientAssertionRequest
@@ -38,19 +37,25 @@ object Validation {
   def verifyClientAssertionSignature(
     keyWithClient: KeyWithClient,
     checker: ClientAssertionChecker
-  ): Either[ComponentError, Unit] =
+  ): Either[ClientAssertionValidationError, Unit] =
     checker
       .verify(AuthorizationManagementUtils.serializeKey(keyWithClient.key))
       .toEither
       .leftMap(ex => InvalidAssertionSignature(keyWithClient.client.id, checker.kid, ex.getMessage))
 
-  def verifyPlatformState(client: Client, checker: ClientAssertionChecker): Either[ComponentError, Unit] =
+  def verifyPlatformState(
+    client: Client,
+    checker: ClientAssertionChecker
+  ): Either[ClientAssertionValidationError, Unit] =
     client.kind match {
       case ClientKind.CONSUMER => verifyConsumerClient(client, checker)
       case ClientKind.API      => Right(())
     }
 
-  private def verifyConsumerClient(client: Client, checker: ClientAssertionChecker): Either[ComponentError, Unit] =
+  private def verifyConsumerClient(
+    client: Client,
+    checker: ClientAssertionChecker
+  ): Either[ClientAssertionValidationError, Unit] =
     for {
       purposeId <- checker.purposeId.toRight(PurposeIdNotProvided)
       purpose   <- client.purposes
@@ -59,16 +64,20 @@ object Validation {
       _         <- checkConsumerClientValidity(client, purpose)
     } yield ()
 
-  private def checkConsumerClientValidity(client: Client, purpose: Purpose): Either[ComponentError, Unit] = {
+  private def checkConsumerClientValidity(
+    client: Client,
+    purpose: Purpose
+  ): Either[ClientAssertionValidationError, Unit] = {
 
     def validate(
       state: ClientComponentState,
-      error: ComponentError
-    ): Validated[NonEmptyList[ComponentError], ClientComponentState] =
+      error: ClientAssertionValidationError
+    ): Validated[NonEmptyList[ClientAssertionValidationError], ClientComponentState] =
       Validated.validNel(state).ensureOr(_ => NonEmptyList.one(error))(_ == ClientComponentState.ACTIVE)
 
-    val validation
-      : Validated[NonEmptyList[ComponentError], (ClientComponentState, ClientComponentState, ClientComponentState)] =
+    val validation: Validated[NonEmptyList[
+      ClientAssertionValidationError
+    ], (ClientComponentState, ClientComponentState, ClientComponentState)] =
       (
         validate(purpose.states.purpose.state, InactivePurpose(purpose.states.purpose.state.toString)),
         validate(purpose.states.eservice.state, InactiveEService(purpose.states.eservice.state.toString)),

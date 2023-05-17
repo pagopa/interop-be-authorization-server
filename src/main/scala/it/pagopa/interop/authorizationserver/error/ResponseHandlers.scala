@@ -3,7 +3,8 @@ package it.pagopa.interop.authorizationserver.error
 import akka.http.scaladsl.server.{Route, StandardRoute}
 import com.typesafe.scalalogging.LoggerTakingImplicit
 import it.pagopa.interop.authorizationserver.error.AuthServerErrors._
-import it.pagopa.interop.clientassertionvalidation.Errors._
+import it.pagopa.interop.clientassertionvalidation.Errors.ClientAssertionValidationError
+//import it.pagopa.interop.clientassertionvalidation.Errors._
 import it.pagopa.interop.commons.logging.ContextFieldsToLog
 import it.pagopa.interop.commons.ratelimiter
 import it.pagopa.interop.commons.ratelimiter.model.Headers
@@ -21,16 +22,8 @@ object ResponseHandlers extends AkkaResponses {
   )(result: Try[T])(implicit contexts: Seq[(String, String)], logger: LoggerTakingImplicit[ContextFieldsToLog]): Route =
     result match {
       case Success(s)                                            => success(s)
-      case Failure(ex: PurposeNotFound)                          => genericBadRequest(ex, logMessage)
-      case Failure(ex: PurposeIdNotProvided.type)                => genericBadRequest(ex, logMessage)
       case Failure(ex: KeyNotFound)                              => genericBadRequest(ex, logMessage)
-      case Failure(ex: InactivePlatformState)                    => genericBadRequest(ex, logMessage)
-      case Failure(ex: InactivePurpose)                          => genericBadRequest(ex, logMessage)
-      case Failure(ex: InactiveEService)                         => genericBadRequest(ex, logMessage)
-      case Failure(ex: InactiveAgreement)                        => genericBadRequest(ex, logMessage)
-      case Failure(ex: InvalidAssertion)                         => genericBadRequest(ex, logMessage)
-      case Failure(ex: InvalidAssertionSignature)                => genericBadRequest(ex, logMessage)
-      case Failure(ex: InvalidClientIdFormat)                    => genericBadRequest(ex, logMessage)
+      case Failure(ex: ClientAssertionValidationError)           => genericBadRequest(ex, logMessage)
       case Failure(ex: ratelimiter.error.Errors.TooManyRequests) =>
         tooManyRequests(
           TooManyRequests,
