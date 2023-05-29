@@ -4,6 +4,8 @@ import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import cats.syntax.all._
 import it.pagopa.interop.authorizationmanagement.client.model._
 import it.pagopa.interop.clientassertionvalidation.Errors._
+import it.pagopa.interop.clientassertionvalidation.model._
+import it.pagopa.interop.clientassertionvalidation.utils.AuthorizationManagementUtils
 import it.pagopa.interop.commons.utils.TypeConversions._
 
 import java.util.UUID

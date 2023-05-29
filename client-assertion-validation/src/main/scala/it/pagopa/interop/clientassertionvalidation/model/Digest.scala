@@ -1,4 +1,4 @@
-package it.pagopa.interop.clientassertionvalidation
+package it.pagopa.interop.clientassertionvalidation.model
 
 import it.pagopa.interop.clientassertionvalidation.Errors.{ClientAssertionValidationError, DigestClaimNotFound}
 

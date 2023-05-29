@@ -22,7 +22,8 @@ import it.pagopa.interop.authorizationserver.model.{
 import it.pagopa.interop.authorizationserver.service.{AuthorizationManagementService, QueueService}
 import it.pagopa.interop.clientassertionvalidation.Errors.{PurposeIdNotProvided, PurposeNotFound}
 import it.pagopa.interop.clientassertionvalidation.Validation._
-import it.pagopa.interop.clientassertionvalidation.{ClientAssertion, ClientAssertionValidator}
+import it.pagopa.interop.clientassertionvalidation.model.ClientAssertion
+import it.pagopa.interop.clientassertionvalidation.ClientAssertionValidator
 import it.pagopa.interop.commons.jwt.model.Token
 import it.pagopa.interop.commons.jwt.service.InteropTokenGenerator
 import it.pagopa.interop.commons.jwt.{JWTConfiguration, JWTInternalTokenConfig}

@@ -6,6 +6,7 @@ import it.pagopa.interop.clientassertionvalidation.Errors._
 import it.pagopa.interop.clientassertionvalidation.SpecData._
 import it.pagopa.interop.clientassertionvalidation.SpecUtil._
 import it.pagopa.interop.clientassertionvalidation.Validation._
+import it.pagopa.interop.clientassertionvalidation.model._
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpecLike
 

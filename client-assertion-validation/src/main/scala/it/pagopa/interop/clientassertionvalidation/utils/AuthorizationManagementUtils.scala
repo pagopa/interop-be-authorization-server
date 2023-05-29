@@ -1,4 +1,4 @@
-package it.pagopa.interop.clientassertionvalidation
+package it.pagopa.interop.clientassertionvalidation.utils
 
 import it.pagopa.interop.authorizationmanagement.client.api.EnumsSerializers
 import it.pagopa.interop.authorizationmanagement.client.invoker.Serializers
