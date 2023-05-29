@@ -31,7 +31,6 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
   private val claimsVerifier: DefaultJWTClaimsVerifier[SecurityContext] =
     new DefaultJWTClaimsVerifier[SecurityContext](null, null, null, null)
 
-  // TODO Move me
   val SHA_256: String = "SHA256"
 
   override def validateClientAssertion(
@@ -136,7 +135,7 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
   ): ValidatedNel[ClientAssertionValidationError, Set[String]] =
     Either
       .cond(
-        receivedAudiences.intersect(expectedAudiences).nonEmpty, // TODO is this check correct?
+        receivedAudiences.intersect(expectedAudiences).nonEmpty,
         receivedAudiences,
         InvalidAudiences(receivedAudiences)
       )
