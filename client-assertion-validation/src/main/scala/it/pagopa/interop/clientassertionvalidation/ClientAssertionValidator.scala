@@ -141,10 +141,6 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
         InvalidAudiences(receivedAudiences)
       )
       .toValidatedNel
-//    Left(InvalidAudiences(receivedAudiences))
-//      .withRight[Unit]
-//      .whenA(receivedAudiences.intersect(expectedAudiences).isEmpty)
-//      .toValidatedNel
 
   private def digestClaim(claimSet: JWTClaimsSet): ValidatedNel[ClientAssertionValidationError, Option[Digest]] = {
     val found: Option[Map[String, AnyRef]] = Option(claimSet.getJSONObjectClaim(DIGEST_CLAIM)).map(_.asScala.toMap)

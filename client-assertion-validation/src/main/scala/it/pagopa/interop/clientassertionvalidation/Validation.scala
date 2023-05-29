@@ -30,7 +30,6 @@ object Validation {
       _               <- validateRequestParameters(grantType, clientAssertionType)
       clientAssertion <- jwtValidator
         .validateClientAssertion(clientAssertion, clientUUID)
-//        .leftMap(err => InvalidAssertion(err.getMessage))
     } yield clientAssertion
 
   def verifyClientAssertionSignature(keyWithClient: KeyWithClient, validationResult: AssertionValidationResult)(
@@ -38,7 +37,6 @@ object Validation {
   ): Either[ClientAssertionValidationError, Unit] =
     jwtValidator
       .verifySignature(validationResult, AuthorizationManagementUtils.serializeKey(keyWithClient.key))
-//      .leftMap(ex => InvalidAssertionSignature(keyWithClient.client.id, keyWithClient.key.kid, ex.getMessage))
 
   def verifyPlatformState(
     client: Client,
