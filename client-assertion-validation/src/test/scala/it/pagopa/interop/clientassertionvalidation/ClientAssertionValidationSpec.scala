@@ -91,5 +91,4 @@ class ClientAssertionValidationSpec extends AnyWordSpecLike {
     }
   }
 
-  // TODO Add other validations
 }
