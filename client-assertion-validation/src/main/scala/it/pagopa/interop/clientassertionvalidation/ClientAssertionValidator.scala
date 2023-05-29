@@ -21,7 +21,10 @@ trait ClientAssertionValidator {
     clientId: Option[UUID]
   ): Either[NonEmptyList[ClientAssertionValidationError], AssertionValidationResult]
 
-  def verifySignature(clientAssertionJws: String, publicKey: String): Either[ClientAssertionValidationError, Unit]
+  def verifySignature(
+    validationResult: AssertionValidationResult,
+    publicKey: String
+  ): Either[ClientAssertionValidationError, Unit]
 }
 
 final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extends ClientAssertionValidator {
@@ -89,12 +92,12 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
     clientAssertion: String
   ): Either[NonEmptyList[ClientAssertionParseFailed], SignedJWT] =
     Try(SignedJWT.parse(clientAssertion)).toEither.leftMap(ex =>
-      NonEmptyList(ClientAssertionParseFailed(ex.getMessage), Nil)
+      NonEmptyList.one(ClientAssertionParseFailed(ex.getMessage))
     )
 
-  private def validateStandardClaims(jwt: SignedJWT): ValidatedNel[ClientAssertionValidationFailed, Unit] =
+  private def validateStandardClaims(jwt: SignedJWT): ValidatedNel[ClientAssertionInvalidClaims, Unit] =
     Try(claimsVerifier.verify(jwt.getJWTClaimsSet, null)).toEither
-      .leftMap(ex => ClientAssertionValidationFailed(ex.getMessage))
+      .leftMap(ex => ClientAssertionInvalidClaims(ex.getMessage))
       .toValidatedNel
 
   private def getOrFail[E, T](value: => T, error: => E): ValidatedNel[E, T] =
@@ -108,11 +111,6 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
     val publicKey = jwk.toRSAKey
     new RSASSAVerifier(publicKey)
   }.toEither.leftMap(ex => PublicKeyParseFailed(ex.getMessage))
-
-  def validateClientAssertion(
-    clientAssertionJws: String,
-    clientId: Option[UUID]
-  ): Either[ClientAssertionValidationError, ClientAssertion]
 
   private def subjectClaim(
     clientId: Option[UUID],
@@ -136,10 +134,17 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
     receivedAudiences: Set[String],
     expectedAudiences: Set[String]
   ): ValidatedNel[ClientAssertionValidationError, Set[String]] =
-    Left(InvalidAudiences(receivedAudiences))
-      .withRight[Unit]
-      .whenA(receivedAudiences.intersect(expectedAudiences).isEmpty)
+    Either
+      .cond(
+        receivedAudiences.intersect(expectedAudiences).nonEmpty, // TODO is this check correct?
+        receivedAudiences,
+        InvalidAudiences(receivedAudiences)
+      )
       .toValidatedNel
+//    Left(InvalidAudiences(receivedAudiences))
+//      .withRight[Unit]
+//      .whenA(receivedAudiences.intersect(expectedAudiences).isEmpty)
+//      .toValidatedNel
 
   private def digestClaim(claimSet: JWTClaimsSet): ValidatedNel[ClientAssertionValidationError, Option[Digest]] = {
     val found: Option[Map[String, AnyRef]] = Option(claimSet.getJSONObjectClaim(DIGEST_CLAIM)).map(_.asScala.toMap)

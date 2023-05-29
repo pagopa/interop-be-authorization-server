@@ -3,7 +3,6 @@ package it.pagopa.interop.authorizationserver.error
 import akka.http.scaladsl.server.{Route, StandardRoute}
 import com.typesafe.scalalogging.LoggerTakingImplicit
 import it.pagopa.interop.authorizationserver.error.AuthServerErrors._
-import it.pagopa.interop.clientassertionvalidation.Errors.ClientAssertionValidationError
 import it.pagopa.interop.commons.logging.ContextFieldsToLog
 import it.pagopa.interop.commons.ratelimiter
 import it.pagopa.interop.commons.ratelimiter.model.Headers
@@ -22,7 +21,7 @@ object ResponseHandlers extends AkkaResponses {
     result match {
       case Success(s)                                            => success(s)
       case Failure(ex: KeyNotFound)                              => genericBadRequest(ex, logMessage)
-      case Failure(ex: ClientAssertionValidationError)           => genericBadRequest(ex, logMessage)
+      case Failure(ex: ClientAssertionValidationWrapper)         => genericBadRequest(ex, logMessage)
       case Failure(ex: ratelimiter.error.Errors.TooManyRequests) =>
         tooManyRequests(
           TooManyRequests,

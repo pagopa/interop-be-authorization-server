@@ -35,14 +35,14 @@ object Errors {
   final case object PurposeIdNotProvided
       extends ClientAssertionValidationError("0009", "Claim purposeId does not exist in this assertion")
 
-  final case class InvalidAssertion(message: String)
-      extends ClientAssertionValidationError("0010", s"Invalid client assertion. Reasons: $message")
+//  final case class InvalidAssertion(message: String)
+//      extends ClientAssertionValidationError("0010", s"Invalid client assertion. Reasons: $message")
 
-  final case class InvalidAssertionSignature(clientId: UUID, kid: String, reason: String)
-      extends ClientAssertionValidationError(
-        "0012",
-        s"Invalid assertion signature for request with client $clientId and kid $kid. Reason: $reason"
-      )
+//  final case class InvalidAssertionSignature(clientId: UUID, kid: String, reason: String)
+//      extends ClientAssertionValidationError(
+//        "0012",
+//        s"Invalid assertion signature for request with client $clientId and kid $kid. Reason: $reason"
+//      )
 
   final case class InvalidClientIdFormat(clientId: String)
       extends ClientAssertionValidationError("0013", s"Client id $clientId is not a valid UUID")
@@ -69,17 +69,17 @@ object Errors {
 
   object KidNotFound extends ClientAssertionValidationError("0006", s"Kid not found in header")
 
-  final case class ClientAssertionValidationFailed(reason: String)
+  final case class ClientAssertionInvalidClaims(reason: String)
       extends ClientAssertionValidationError("0006", s"Client assertion validation failure. Reason: $reason")
 
   final case class ClientAssertionParseFailed(reason: String)
       extends ClientAssertionValidationError("0007", s"Client assertion parse failure. Reason: $reason")
 
-  final case class KeyNotFound(clientId: UUID, kid: String, purposeId: Option[UUID])
-      extends ClientAssertionValidationError(
-        "0008",
-        s"Key not found for clientId $clientId, kid $kid ${purposeId.fold("")(id => s"and purposeId $id")}"
-      )
+//  final case class KeyNotFound(clientId: UUID, kid: String, purposeId: Option[UUID])
+//      extends ClientAssertionValidationError(
+//        "0008",
+//        s"Key not found for clientId $clientId, kid $kid ${purposeId.fold("")(id => s"and purposeId $id")}"
+//      )
 
   final case class PublicKeyParseFailed(reason: String)
       extends ClientAssertionValidationError("0010", s"Error parsing public key. Reason: $reason")
@@ -90,12 +90,12 @@ object Errors {
   final case class InvalidAudiences(audiences: Set[String])
       extends ClientAssertionValidationError("0012", s"Invalid audiences: ${audiences.mkString(",")}")
 
-  // TODO Add id?
-  object InactiveAgreementError extends ClientAssertionValidationError("0013", s"Agreement is not ACTIVE")
-
-  object InactiveEServiceError extends ClientAssertionValidationError("0014", s"EService is not ACTIVE")
-
-  object InactivePurposeError extends ClientAssertionValidationError("0015", s"Purpose is not ACTIVE")
+//  // TODO Add id?
+//  object InactiveAgreementError extends ClientAssertionValidationError("0013", s"Agreement is not ACTIVE")
+//
+//  object InactiveEServiceError extends ClientAssertionValidationError("0014", s"EService is not ACTIVE")
+//
+//  object InactivePurposeError extends ClientAssertionValidationError("0015", s"Purpose is not ACTIVE")
 
   final case class DigestClaimNotFound(claim: String)
       extends ClientAssertionValidationError("", s"Digest claim $claim not found")

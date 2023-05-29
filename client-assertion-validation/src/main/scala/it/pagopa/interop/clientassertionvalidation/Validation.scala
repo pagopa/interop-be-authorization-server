@@ -22,23 +22,22 @@ object Validation {
     grantType: String
   )(
     jwtValidator: ClientAssertionValidator
-  ): Either[NonEmptyList[ClientAssertionValidationError], AssertionValidationResult] = {
+  ): Either[NonEmptyList[ClientAssertionValidationError], AssertionValidationResult] =
     for {
       clientUUID      <- clientId.traverse(id =>
-        id.toUUID.toEither.leftMap(_ => NonEmptyList(InvalidClientIdFormat(id), Nil))
+        id.toUUID.toEither.leftMap(_ => NonEmptyList.one(InvalidClientIdFormat(id)))
       )
       _               <- validateRequestParameters(grantType, clientAssertionType)
       clientAssertion <- jwtValidator
         .validateClientAssertion(clientAssertion, clientUUID)
 //        .leftMap(err => InvalidAssertion(err.getMessage))
     } yield clientAssertion
-  }
 
-  def verifyClientAssertionSignature(keyWithClient: KeyWithClient, clientAssertion: ClientAssertion)(
+  def verifyClientAssertionSignature(keyWithClient: KeyWithClient, validationResult: AssertionValidationResult)(
     jwtValidator: ClientAssertionValidator
   ): Either[ClientAssertionValidationError, Unit] =
     jwtValidator
-      .verifySignature(clientAssertion.raw, AuthorizationManagementUtils.serializeKey(keyWithClient.key))
+      .verifySignature(validationResult, AuthorizationManagementUtils.serializeKey(keyWithClient.key))
 //      .leftMap(ex => InvalidAssertionSignature(keyWithClient.client.id, keyWithClient.key.kid, ex.getMessage))
 
   def verifyPlatformState(
@@ -50,17 +49,17 @@ object Validation {
       case ClientKind.API      => Right(())
     }
 
-  def validateRequestParameters(
+  private def validateRequestParameters(
     grantType: String,
     assertionType: String
   ): Either[NonEmptyList[ClientAssertionValidationError], Unit] =
     (validateGrantType(grantType), validateAssertionType(assertionType)).tupled.as(()).toEither
 
-  def validateGrantType(grantType: String): ValidatedNel[ClientAssertionValidationError, Unit] =
+  private def validateGrantType(grantType: String): ValidatedNel[ClientAssertionValidationError, Unit] =
     if (grantType != clientCredentialsGrantType) InvalidGrantType(grantType).invalidNel
     else ().validNel
 
-  def validateAssertionType(assertionType: String): ValidatedNel[ClientAssertionValidationError, Unit] =
+  private def validateAssertionType(assertionType: String): ValidatedNel[ClientAssertionValidationError, Unit] =
     if (assertionType != clientAssertionType) InvalidAssertionType(assertionType).invalidNel
     else ().validNel
 

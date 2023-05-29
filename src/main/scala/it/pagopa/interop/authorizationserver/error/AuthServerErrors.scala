@@ -12,4 +12,5 @@ object AuthServerErrors {
   final case class KeyNotFound(clientId: UUID, kid: String)
       extends ComponentError("0011", s"Key $kid not found for Client $clientId")
 
+  final case class ClientAssertionValidationWrapper(message: String) extends ComponentError("0001", message)
 }
