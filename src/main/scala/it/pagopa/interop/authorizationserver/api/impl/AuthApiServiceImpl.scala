@@ -36,20 +36,6 @@ import it.pagopa.interop.commons.utils._
 import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 
-object TempUtils {
-
-  implicit class EitherValidationOps[A](val either: Either[NonEmptyList[Throwable], A]) extends AnyVal {
-    def toFuture(wrappingError: String => Throwable): Future[A] =
-      either.fold(
-        e => Future.failed(wrappingError(e.map(_.getMessage).toList.mkString(","))),
-        a => Future.successful(a)
-      )
-  }
-
-}
-
-import it.pagopa.interop.authorizationserver.api.impl.TempUtils._
-
 final case class AuthApiServiceImpl(
   authorizationManagementService: AuthorizationManagementService,
   jwtValidator: ClientAssertionValidator,
@@ -76,15 +62,16 @@ final case class AuthApiServiceImpl(
   ): Route = {
     val result: Future[(ClientCredentialsResponse, RateLimitStatus)] = for {
       validation    <- validateClientAssertion(clientId, clientAssertion, clientAssertionType, grantType)(jwtValidator)
-        .toFuture(ClientAssertionValidationWrapper)
+        .leftMap(ClientAssertionValidationWrapper)
+        .toFuture
       keyWithClient <- getTokenGenerationBundle(validation.clientAssertion.sub, validation.clientAssertion.kid)
       _             <- verifyClientAssertionSignature(keyWithClient, validation)(jwtValidator)
-        .leftMap(ex => ClientAssertionValidationWrapper(ex.getMessage))
+        .leftMap(ex => ClientAssertionValidationWrapper(NonEmptyList.one(ex)))
         .toFuture
       rateLimitStatus <- rateLimiter.rateLimiting(keyWithClient.client.consumerId)
-      _               <- verifyPlatformState(keyWithClient.client, validation.clientAssertion).toFuture(
-        ClientAssertionValidationWrapper
-      )
+      _               <- verifyPlatformState(keyWithClient.client, validation.clientAssertion)
+        .leftMap(ClientAssertionValidationWrapper)
+        .toFuture
       token           <- generateToken(keyWithClient.client, validation.clientAssertion)
       _ = logger.info(
         s"Token with jti ${token.jti} generated for client ${keyWithClient.client.id} of type ${keyWithClient.client.kind.toString}"
