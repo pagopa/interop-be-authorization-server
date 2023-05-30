@@ -1,10 +1,10 @@
 package it.pagopa.interop.clientassertionvalidation
 
+import cats.data.NonEmptyList
 import it.pagopa.interop.clientassertionvalidation.Errors._
 import it.pagopa.interop.clientassertionvalidation.SpecData._
 import it.pagopa.interop.clientassertionvalidation.SpecUtil._
 import it.pagopa.interop.clientassertionvalidation.Validation._
-import it.pagopa.interop.commons.jwt.errors._
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpecLike
 
@@ -18,11 +18,7 @@ class ClientAssertionValidationSpec extends AnyWordSpecLike {
 
       validateClientAssertion(Some(clientId.toString), validClientAssertion, wrongClientAssertionType, grantType)(
         successfulJwtValidator
-      ) shouldBe Left(
-        InvalidAssertion(
-          InvalidClientAssertionType(s"Client assertion type '$wrongClientAssertionType' is not valid").getMessage
-        )
-      )
+      ) shouldBe Left(NonEmptyList.one(InvalidAssertionType(wrongClientAssertionType)))
     }
 
     "fail on wrong grant type" in {
@@ -30,7 +26,7 @@ class ClientAssertionValidationSpec extends AnyWordSpecLike {
 
       validateClientAssertion(Some(clientId.toString), validClientAssertion, clientAssertionType, wrongGrantType)(
         successfulJwtValidator
-      ) shouldBe Left(InvalidAssertion(InvalidGrantType(wrongGrantType).getMessage))
+      ) shouldBe Left(NonEmptyList.one(InvalidGrantType(wrongGrantType)))
     }
 
     "fail on malformed assertion" in {
@@ -38,33 +34,36 @@ class ClientAssertionValidationSpec extends AnyWordSpecLike {
 
       validateClientAssertion(Some(clientId.toString), malformedAssertion, clientAssertionType, grantType)(
         successfulJwtValidator
-      ) shouldBe Left(InvalidAssertion("Invalid serialized unsecured/JWS/JWE object: Missing part delimiters"))
+      ) shouldBe Left(
+        NonEmptyList
+          .one(ClientAssertionParseFailed("Invalid serialized unsecured/JWS/JWE object: Missing part delimiters"))
+      )
     }
 
     "fail on wrong audience in assertion" in {
       validateClientAssertion(Some(clientId.toString), validClientAssertion, clientAssertionType, grantType)(
         failureJwtValidator
-      ) shouldBe Left(InvalidAssertion("JWT audience rejected: [test.interop.pagopa.it]"))
+      ) shouldBe Left(NonEmptyList.one(InvalidAudiences(Set("test.interop.pagopa.it"))))
     }
 
     "fail if client ID in the assertion is different from the parameter client ID" in {
       val wrongClientId = UUID.randomUUID().toString
       validateClientAssertion(Some(wrongClientId), validClientAssertion, clientAssertionType, grantType)(
         successfulJwtValidator
-      ) shouldBe Left(InvalidAssertion(InvalidSubject(clientId.toString).getMessage))
+      ) shouldBe Left(NonEmptyList.one(InvalidSubject(clientId.toString)))
     }
 
     "fail on wrong client id format" in {
       val wrongClientId = "definitely-not-an-uuid"
       validateClientAssertion(Some(wrongClientId), validClientAssertion, clientAssertionType, grantType)(
         successfulJwtValidator
-      ) shouldBe Left(InvalidClientIdFormat(wrongClientId))
+      ) shouldBe Left(NonEmptyList.one(InvalidClientIdFormat(wrongClientId)))
     }
 
     "fail on wrong jwt subject format" in {
       validateClientAssertion(Some(clientId.toString), clientAssertionWithWrongSubject, clientAssertionType, grantType)(
         successfulJwtValidator
-      ) shouldBe Left(InvalidAssertion(InvalidSubjectFormat("definitely-not-an-uuid").getMessage))
+      ) shouldBe Left(NonEmptyList.one(InvalidSubjectFormat("definitely-not-an-uuid")))
     }
 
     "fail on wrong purpose id format" in {
@@ -73,8 +72,15 @@ class ClientAssertionValidationSpec extends AnyWordSpecLike {
         clientAssertionWithWrongPurposeId,
         clientAssertionType,
         grantType
-      )(successfulJwtValidator) shouldBe Left(
-        InvalidAssertion(InvalidPurposeIdFormat("definitely-not-an-uuid").getMessage)
+      )(successfulJwtValidator) shouldBe Left(NonEmptyList.one(InvalidPurposeIdFormat("definitely-not-an-uuid")))
+    }
+
+    "fail on multiple validation errors" in {
+      val wrongClientId = UUID.randomUUID().toString
+      validateClientAssertion(Some(wrongClientId), clientAssertionWithWrongPurposeId, clientAssertionType, grantType)(
+        successfulJwtValidator
+      ) shouldBe Left(
+        NonEmptyList.of(InvalidSubject(clientId.toString), InvalidPurposeIdFormat("definitely-not-an-uuid"))
       )
     }
 

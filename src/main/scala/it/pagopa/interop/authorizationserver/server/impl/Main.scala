@@ -5,7 +5,6 @@ import akka.http.scaladsl.Http
 import akka.management.scaladsl.AkkaManagement
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
 import it.pagopa.interop.authorizationserver.server.Controller
-
 import it.pagopa.interop.commons.utils.CORSSupport
 import com.typesafe.scalalogging.Logger
 
@@ -14,6 +13,8 @@ import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
 import buildinfo.BuildInfo
 import akka.actor.typed.DispatcherSelector
+import it.pagopa.interop.clientassertionvalidation.NimbusClientAssertionValidator
+
 import scala.concurrent.ExecutionContextExecutor
 
 object Main extends App with CORSSupport with Dependencies {
@@ -28,17 +29,15 @@ object Main extends App with CORSSupport with Dependencies {
 
       AkkaManagement.get(actorSystem.classicSystem).start()
 
-      val serverBinding = for {
-        clientAssertionValidator <- getClientAssertionValidator()
-        controller: Controller = new Controller(
-          authApi(clientAssertionValidator, blockingEc),
-          healthApi,
-          validationExceptionToRoute.some
-        )(actorSystem.classicSystem)
-        binding <- Http()
-          .newServerAt("0.0.0.0", ApplicationConfiguration.serverPort)
-          .bind(corsHandler(controller.routes))
-      } yield binding
+      val controller: Controller = new Controller(
+        authApi(new NimbusClientAssertionValidator(ApplicationConfiguration.clientAssertionAudience), blockingEc),
+        healthApi,
+        validationExceptionToRoute.some
+      )(actorSystem.classicSystem)
+
+      val serverBinding = Http()
+        .newServerAt("0.0.0.0", ApplicationConfiguration.serverPort)
+        .bind(corsHandler(controller.routes))
 
       serverBinding.onComplete {
         case Success(b) =>

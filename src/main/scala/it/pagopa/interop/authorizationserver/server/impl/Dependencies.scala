@@ -6,8 +6,6 @@ import akka.http.scaladsl.server.Directives.complete
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.SecurityDirectives
 import com.atlassian.oai.validator.report.ValidationReport
-import com.nimbusds.jose.proc.SecurityContext
-import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import it.pagopa.interop.authorizationmanagement.client.api.{TokenGenerationApi => AuthorizationTokenGenerationApi}
 import it.pagopa.interop.authorizationserver.api._
 import it.pagopa.interop.authorizationserver.api.impl.{
@@ -20,24 +18,19 @@ import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
 import it.pagopa.interop.authorizationserver.error.ResponseHandlers.serviceCode
 import it.pagopa.interop.authorizationserver.service._
 import it.pagopa.interop.authorizationserver.service.impl._
+import it.pagopa.interop.clientassertionvalidation.ClientAssertionValidator
 import it.pagopa.interop.commons.jwt._
-import it.pagopa.interop.commons.jwt.service.ClientAssertionValidator
-import it.pagopa.interop.commons.jwt.service.impl.{
-  DefaultClientAssertionValidator,
-  DefaultInteropTokenGenerator,
-  getClaimsVerifier
-}
+import it.pagopa.interop.commons.jwt.service.impl.DefaultInteropTokenGenerator
 import it.pagopa.interop.commons.ratelimiter.RateLimiter
 import it.pagopa.interop.commons.ratelimiter.impl.RedisRateLimiter
 import it.pagopa.interop.commons.signer.service.SignerService
 import it.pagopa.interop.commons.signer.service.impl.KMSSignerService
 import it.pagopa.interop.commons.utils.AkkaUtils.PassThroughAuthenticator
 import it.pagopa.interop.commons.utils.OpenapiUtils
-import it.pagopa.interop.commons.utils.TypeConversions.TryOps
 import it.pagopa.interop.commons.utils.errors.{Problem => CommonProblem}
 import it.pagopa.interop.commons.utils.service.OffsetDateTimeSupplier
 
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 
 trait Dependencies {
 
@@ -52,18 +45,6 @@ trait Dependencies {
     )(blockingEc)
 
   private def signerService(blockingEc: ExecutionContextExecutor): SignerService = new KMSSignerService(blockingEc)
-
-  def getClientAssertionValidator(): Future[ClientAssertionValidator] =
-    JWTConfiguration.jwtReader
-      .loadKeyset()
-      .map(keyset =>
-        new DefaultClientAssertionValidator with PublicKeysHolder {
-          var publicKeyset: Map[KID, SerializedKey]                                        = keyset
-          override protected val claimsVerifier: DefaultJWTClaimsVerifier[SecurityContext] =
-            getClaimsVerifier(audience = ApplicationConfiguration.clientAssertionAudience)
-        }
-      )
-      .toFuture
 
   private def interopTokenGenerator(blockingEc: ExecutionContextExecutor): DefaultInteropTokenGenerator =
     new DefaultInteropTokenGenerator(
