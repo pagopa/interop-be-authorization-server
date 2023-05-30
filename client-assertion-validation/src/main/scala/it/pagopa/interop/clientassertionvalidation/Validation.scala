@@ -90,9 +90,9 @@ object Validation {
       InactivePlatformState
     ], (ClientComponentState, ClientComponentState, ClientComponentState)] =
       (
-        validate(purpose.states.purpose.state, InactivePurpose(purpose.states.purpose.state.toString)),
-        validate(purpose.states.eservice.state, InactiveEService(purpose.states.eservice.state.toString)),
-        validate(purpose.states.agreement.state, InactiveAgreement(purpose.states.agreement.state.toString))
+        validate(purpose.states.purpose.state, InactivePurpose),
+        validate(purpose.states.eservice.state, InactiveEService),
+        validate(purpose.states.agreement.state, InactiveAgreement)
       ).tupled
 
     validation.map(_ => ())

@@ -36,7 +36,7 @@ class PlatformStateValidation extends AnyWordSpecLike {
         _          <- verifyPlatformState(client, validation.clientAssertion)
       } yield ()
 
-      result shouldBe Left(NonEmptyList.one(InactivePurpose(ClientComponentState.INACTIVE.toString)))
+      result shouldBe Left(NonEmptyList.one(InactivePurpose))
     }
 
     "fail if EService is not active" in {
@@ -47,7 +47,7 @@ class PlatformStateValidation extends AnyWordSpecLike {
         _          <- verifyPlatformState(client, validation.clientAssertion)
       } yield ()
 
-      result shouldBe Left(NonEmptyList.one(InactiveEService(ClientComponentState.INACTIVE.toString)))
+      result shouldBe Left(NonEmptyList.one(InactiveEService))
     }
 
     "fail if Agreement is not active" in {
@@ -58,7 +58,7 @@ class PlatformStateValidation extends AnyWordSpecLike {
         _          <- verifyPlatformState(client, validation.clientAssertion)
       } yield ()
 
-      result shouldBe Left(NonEmptyList.one(InactiveAgreement(ClientComponentState.INACTIVE.toString)))
+      result shouldBe Left(NonEmptyList.one(InactiveAgreement))
     }
 
     "fail if several objects are not active" in {
@@ -73,13 +73,7 @@ class PlatformStateValidation extends AnyWordSpecLike {
         _          <- verifyPlatformState(client, validation.clientAssertion)
       } yield ()
 
-      result shouldBe Left(
-        NonEmptyList.of(
-          InactivePurpose(ClientComponentState.INACTIVE.toString),
-          InactiveEService(ClientComponentState.INACTIVE.toString),
-          InactiveAgreement(ClientComponentState.INACTIVE.toString)
-        )
-      )
+      result shouldBe Left(NonEmptyList.of(InactivePurpose, InactiveEService, InactiveAgreement))
 
     }
 
