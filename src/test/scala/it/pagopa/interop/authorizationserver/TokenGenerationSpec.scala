@@ -17,7 +17,6 @@ import it.pagopa.interop.clientassertionvalidation.SpecData.{
   makeClient,
   rsaKid
 }
-//import it.pagopa.interop.clientassertionvalidation.SpecData._
 import it.pagopa.interop.commons.utils.CORRELATION_ID_HEADER
 import org.scalatest.matchers.should.Matchers._
 import spray.json.JsonWriter
