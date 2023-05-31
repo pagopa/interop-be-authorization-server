@@ -7,6 +7,8 @@ import scala.util.control.NoStackTrace
 
 object Errors {
 
+  // Warning: Do not change error codes
+
   abstract class ClientAssertionValidationError(override val code: String, override val msg: String)
       extends ComponentError(code, msg)
       with NoStackTrace
@@ -126,5 +128,9 @@ object Errors {
   object InactivePurpose   extends InactivePlatformState("8026", "Purpose is not active")
   object InactiveEService  extends InactivePlatformState("8027", "E-Service is not active")
   object InactiveAgreement extends InactivePlatformState("8028", "Agreement is not active")
+
+  final case class AlgorithmNotAllowed(algorithm: String)
+      extends ClientAssertionValidationError("8029", s"Algorithm $algorithm is not allowed")
+      with ClientAssertionValidationFailure
 
 }

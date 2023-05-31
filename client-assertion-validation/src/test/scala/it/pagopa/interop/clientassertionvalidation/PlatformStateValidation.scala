@@ -7,6 +7,7 @@ import it.pagopa.interop.clientassertionvalidation.SpecData._
 import it.pagopa.interop.clientassertionvalidation.SpecUtil._
 import it.pagopa.interop.clientassertionvalidation.Validation._
 import it.pagopa.interop.clientassertionvalidation.model._
+import it.pagopa.interop.commons.utils.PURPOSE_ID_CLAIM
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpecLike
 
@@ -14,10 +15,9 @@ class PlatformStateValidation extends AnyWordSpecLike {
 
   "Platform State Verification" should {
 
+    val assertion = fastClientAssertionJWT(customClaims = Map(PURPOSE_ID_CLAIM -> SpecData.purposeId))
     val successfulValidation: Either[NonEmptyList[ClientAssertionValidationError], AssertionValidationResult] =
-      validateClientAssertion(Some(clientId.toString), validClientAssertion, clientAssertionType, grantType)(
-        successfulJwtValidator
-      )
+      validateClientAssertion(Some(clientId.toString), assertion, clientAssertionType, grantType)(jwtValidator)
 
     "fail if purpose id is not assigned to the client" in {
       val result = for {

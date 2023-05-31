@@ -33,7 +33,8 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
   private val claimsVerifier: DefaultJWTClaimsVerifier[SecurityContext] =
     new DefaultJWTClaimsVerifier[SecurityContext](null, null, null, null)
 
-  val SHA_256: String = "SHA256"
+  val SHA_256: String           = "SHA256"
+  val ALLOWED_ALGORITHM: String = "RS256"
 
   override def validateClientAssertion(
     clientAssertionJws: String,
@@ -64,7 +65,7 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
     (
       validateStandardClaims(jwt),
       getOrFail(jwt.getHeader.getKeyID, KidNotFound),
-      getOrFail(jwt.getHeader.getAlgorithm.getName, AlgorithmNotFound),
+      algorithm(jwt.getHeader.getAlgorithm.getName),
       subjectClaim(clientId, jwt.getJWTClaimsSet.getSubject),
       purposeIdClaim(jwt.getJWTClaimsSet.getStringClaim(PURPOSE_ID_CLAIM)),
       getOrFail(jwt.getJWTClaimsSet.getJWTID, JtiNotFound),
@@ -137,6 +138,11 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
         InvalidAudiences(receivedAudiences)
       )
       .toValidatedNel
+
+  private def algorithm(alg: => String): ValidatedNel[ValidationFailure, String] =
+    getOrFail(alg, AlgorithmNotFound).andThen(a =>
+      if (a == ALLOWED_ALGORITHM) a.validNel else AlgorithmNotAllowed(a).invalidNel
+    )
 
   private def digestClaim(claimSet: JWTClaimsSet): ValidatedNel[ValidationFailure, Option[Digest]] = {
     val found: Option[Map[String, AnyRef]] = Option(claimSet.getJSONObjectClaim(DIGEST_CLAIM)).map(_.asScala.toMap)

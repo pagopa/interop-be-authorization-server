@@ -1,9 +1,11 @@
 package it.pagopa.interop.clientassertionvalidation
 
+import com.nimbusds.jose.jwk.RSAKey
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import it.pagopa.interop.authorizationmanagement.client.model._
 
 import java.time.{OffsetDateTime, ZoneOffset}
-import java.util.UUID
+import java.util.{Date, UUID}
 
 object SpecData {
   final val timestamp = OffsetDateTime.of(2022, 12, 31, 11, 22, 33, 44, ZoneOffset.UTC)
@@ -16,6 +18,12 @@ object SpecData {
 
   val clientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
   val grantType           = "client_credentials"
+
+  val assertionExpirationTime: Date =
+    Date.from(OffsetDateTime.of(2099, 12, 31, 23, 59, 59, 59, ZoneOffset.UTC).toInstant)
+  val rsaKey: RSAKey                = new RSAKeyGenerator(2048).generate
+  val rsaKid: String                = rsaKey.computeThumbprint().toJSONString
+  val rsaPrivateKey: String         = rsaKey.toJSONString
 
   // These values have been used to generate test tokens.
   //   Any change to them would probably require to re-generate tokens and keys.
@@ -60,11 +68,11 @@ object SpecData {
   )
   // ------------------------------------
 
-  val clientAssertionWithWrongSubject =
-    "eyJraWQiOiJLZDNXUkFEaTV5akM1eTdVeDczTG5rOWN2c0w1aE1IcGxVdXE1eUtzQk1nIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiJkZWZpbml0ZWx5LW5vdC1hbi11dWlkIiwiYXVkIjoidGVzdC5pbnRlcm9wLnBhZ29wYS5pdCIsIm5iZiI6MTY1MDYyMTg1OSwiaXNzIjoiM2RhMmM5NTUtZmNhZS00NTdmLTkyNmYtNmRjNDFiOGY5NWE5IiwicHVycG9zZUlkIjoiYjU0MGE0MTUtZjY1ZC00MjcwLTliYWQtN2I3ODlkMTI0MTc2IiwiZXhwIjo0MTAyMzU0ODAwLCJpYXQiOjE2NTA2MjE4NTksImp0aSI6IjhlMGFkOWIyLTg3ODgtNDU4MS1hMGY1LWQzMjYwMThiOWMzYSJ9.GI_5X1NSGn3huiWueli107cgcrvJYUYs3eQWrNKGJCbPea0ncqHLkP0_vhZxqhMMaOZfQqxydJumOLfeqgLUFaPB0a7FCOqEf3VCnb-cFetarryVvaGuYQr_Rs9OP5482TRMEJECeURRT_3ix03uEMzESjuVQMBcOrw8WDo6WYEmAJRpk1monZk-zNe_8wCUoNHNH_MLrBXw4UeTAZFT-NI8RoT0zd7nWbENzDrBGCpernHqXR_mS4ypgeQsHdUhP5oOXa-wCa8P3lskwgVU3nMMA3x6yEPY4E5xDASCUw2l677JFquLAIMsCV_2c4m0Cr11Vs6m96FQ24ty8a6Q4w"
-
-  val clientAssertionWithWrongPurposeId =
-    "eyJraWQiOiJLZDNXUkFEaTV5akM1eTdVeDczTG5rOWN2c0w1aE1IcGxVdXE1eUtzQk1nIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiIzZGEyYzk1NS1mY2FlLTQ1N2YtOTI2Zi02ZGM0MWI4Zjk1YTkiLCJhdWQiOiJ0ZXN0LmludGVyb3AucGFnb3BhLml0IiwibmJmIjoxNjUwNjIxODU5LCJpc3MiOiIzZGEyYzk1NS1mY2FlLTQ1N2YtOTI2Zi02ZGM0MWI4Zjk1YTkiLCJwdXJwb3NlSWQiOiJkZWZpbml0ZWx5LW5vdC1hbi11dWlkIiwiZXhwIjo0MTAyMzU0ODAwLCJpYXQiOjE2NTA2MjE4NTksImp0aSI6IjhlMGFkOWIyLTg3ODgtNDU4MS1hMGY1LWQzMjYwMThiOWMzYSJ9.R1QHteRIUwzxp_t5PYNd8LnwrQ_XQaEEVzP7TrqVBQiVDg8cINPGkRLtH0qTTZLOHRdLbC-3VSxaH3Vma0WzxBZfXkON_JMgb-1DK3gtB3rcgYZoGkfDxUWLUt0LOzRE9vByebY4Bkx0-XIPE7iXjv255w3bo0Bpaiq9UdOZeCwv_rJW2w-qPTOLzUyVJeWEYzbC0VGFnOkn57Nw03spYMQrY0kg7H1S8lhUbKVJwG4VY7wLkJO5Nb2USrwzJwwCCpKq9wPQIb57yrpbYoyi1hvLwhSbJ8LiDByrBTojIgeepmBjt6DKzsXAmoicAMnfH4AktSxQSLlA3u-ZJKaBKA"
+//  val clientAssertionWithWrongSubject =
+//    "eyJraWQiOiJLZDNXUkFEaTV5akM1eTdVeDczTG5rOWN2c0w1aE1IcGxVdXE1eUtzQk1nIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiJkZWZpbml0ZWx5LW5vdC1hbi11dWlkIiwiYXVkIjoidGVzdC5pbnRlcm9wLnBhZ29wYS5pdCIsIm5iZiI6MTY1MDYyMTg1OSwiaXNzIjoiM2RhMmM5NTUtZmNhZS00NTdmLTkyNmYtNmRjNDFiOGY5NWE5IiwicHVycG9zZUlkIjoiYjU0MGE0MTUtZjY1ZC00MjcwLTliYWQtN2I3ODlkMTI0MTc2IiwiZXhwIjo0MTAyMzU0ODAwLCJpYXQiOjE2NTA2MjE4NTksImp0aSI6IjhlMGFkOWIyLTg3ODgtNDU4MS1hMGY1LWQzMjYwMThiOWMzYSJ9.GI_5X1NSGn3huiWueli107cgcrvJYUYs3eQWrNKGJCbPea0ncqHLkP0_vhZxqhMMaOZfQqxydJumOLfeqgLUFaPB0a7FCOqEf3VCnb-cFetarryVvaGuYQr_Rs9OP5482TRMEJECeURRT_3ix03uEMzESjuVQMBcOrw8WDo6WYEmAJRpk1monZk-zNe_8wCUoNHNH_MLrBXw4UeTAZFT-NI8RoT0zd7nWbENzDrBGCpernHqXR_mS4ypgeQsHdUhP5oOXa-wCa8P3lskwgVU3nMMA3x6yEPY4E5xDASCUw2l677JFquLAIMsCV_2c4m0Cr11Vs6m96FQ24ty8a6Q4w"
+//
+//  val clientAssertionWithWrongPurposeId =
+//    "eyJraWQiOiJLZDNXUkFEaTV5akM1eTdVeDczTG5rOWN2c0w1aE1IcGxVdXE1eUtzQk1nIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiIzZGEyYzk1NS1mY2FlLTQ1N2YtOTI2Zi02ZGM0MWI4Zjk1YTkiLCJhdWQiOiJ0ZXN0LmludGVyb3AucGFnb3BhLml0IiwibmJmIjoxNjUwNjIxODU5LCJpc3MiOiIzZGEyYzk1NS1mY2FlLTQ1N2YtOTI2Zi02ZGM0MWI4Zjk1YTkiLCJwdXJwb3NlSWQiOiJkZWZpbml0ZWx5LW5vdC1hbi11dWlkIiwiZXhwIjo0MTAyMzU0ODAwLCJpYXQiOjE2NTA2MjE4NTksImp0aSI6IjhlMGFkOWIyLTg3ODgtNDU4MS1hMGY1LWQzMjYwMThiOWMzYSJ9.R1QHteRIUwzxp_t5PYNd8LnwrQ_XQaEEVzP7TrqVBQiVDg8cINPGkRLtH0qTTZLOHRdLbC-3VSxaH3Vma0WzxBZfXkON_JMgb-1DK3gtB3rcgYZoGkfDxUWLUt0LOzRE9vByebY4Bkx0-XIPE7iXjv255w3bo0Bpaiq9UdOZeCwv_rJW2w-qPTOLzUyVJeWEYzbC0VGFnOkn57Nw03spYMQrY0kg7H1S8lhUbKVJwG4VY7wLkJO5Nb2USrwzJwwCCpKq9wPQIb57yrpbYoyi1hvLwhSbJ8LiDByrBTojIgeepmBjt6DKzsXAmoicAMnfH4AktSxQSLlA3u-ZJKaBKA"
 
   val eServiceAudience      = "e-service-audience"
   val eServiceTokenDuration = 100

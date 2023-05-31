@@ -14,25 +14,26 @@ class SignatureVerification extends AnyWordSpecLike {
   "Client Assertion Signature Verification" should {
 
     val successfulValidation: Either[NonEmptyList[ClientAssertionValidationError], AssertionValidationResult] =
-      validateClientAssertion(Some(clientId.toString), validClientAssertion, clientAssertionType, grantType)(
-        successfulJwtValidator
+      validateClientAssertion(Some(clientId.toString), fastClientAssertionJWT(), clientAssertionType, grantType)(
+        jwtValidator
       )
 
     "fail if the assertion is not signed with the public key corresponding to the kid" in {
       val result = for {
         validation <- successfulValidation
-        _          <- verifyClientAssertionSignature(keyWithClient.copy(key = anotherModelKey), validation)(
-          successfulJwtValidator
-        )
+        _ <- verifyClientAssertionSignature(keyWithClient.copy(key = anotherModelKey), validation)(jwtValidator)
       } yield ()
 
       result shouldBe Left(InvalidClientAssertionSignature)
     }
 
     "succeed on correctly signed client assertion" in {
+
+      val key = keyFromRSAKey(rsaKid, rsaKey)
+
       val result = for {
         validation <- successfulValidation
-        _          <- verifyClientAssertionSignature(keyWithClient, validation)(successfulJwtValidator)
+        _          <- verifyClientAssertionSignature(keyWithClient.copy(key = key), validation)(jwtValidator)
       } yield ()
 
       result shouldBe Right(())
