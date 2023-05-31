@@ -6,13 +6,14 @@ import it.pagopa.interop.authorizationmanagement.client.model._
 import it.pagopa.interop.clientassertionvalidation.Errors._
 import it.pagopa.interop.clientassertionvalidation.model._
 import it.pagopa.interop.clientassertionvalidation.utils.AuthorizationManagementUtils
+import it.pagopa.interop.clientassertionvalidation.utils.ValidationTypes._
 import it.pagopa.interop.commons.utils.TypeConversions._
 
 import java.util.UUID
 
 object Validation {
 
-  type ValidationResult[A] = ValidatedNel[ClientAssertionValidationError, A]
+  type StatesValidationResult[A] = ValidatedNel[StatesVerificationFailure, A]
 
   private final val clientAssertionType: String        = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
   private final val clientCredentialsGrantType: String = "client_credentials"
@@ -22,9 +23,7 @@ object Validation {
     clientAssertion: String,
     clientAssertionType: String,
     grantType: String
-  )(
-    jwtValidator: ClientAssertionValidator
-  ): Either[NonEmptyList[ClientAssertionValidationError], AssertionValidationResult] =
+  )(jwtValidator: ClientAssertionValidator): Either[NonEmptyList[ValidationFailure], AssertionValidationResult] =
     for {
       clientUUID      <- clientId.traverse(id =>
         id.toUUID.toEither.leftMap(_ => NonEmptyList.one(InvalidClientIdFormat(id)))
@@ -36,14 +35,14 @@ object Validation {
 
   def verifyClientAssertionSignature(keyWithClient: KeyWithClient, validationResult: AssertionValidationResult)(
     jwtValidator: ClientAssertionValidator
-  ): Either[ClientAssertionValidationError, Unit] =
+  ): Either[SignatureVerificationFailure, Unit] =
     jwtValidator
       .verifySignature(validationResult, AuthorizationManagementUtils.serializeKey(keyWithClient.key))
 
   def verifyPlatformState(
     client: Client,
     clientAssertion: ClientAssertion
-  ): Either[NonEmptyList[ClientAssertionValidationError], Unit] =
+  ): Either[NonEmptyList[StatesVerificationFailure], Unit] =
     client.kind match {
       case ClientKind.CONSUMER => verifyConsumerClient(client, clientAssertion)
       case ClientKind.API      => Right(())
@@ -52,28 +51,28 @@ object Validation {
   private def validateRequestParameters(
     grantType: String,
     assertionType: String
-  ): Either[NonEmptyList[ClientAssertionValidationError], Unit] =
+  ): Either[NonEmptyList[ValidationFailure], Unit] =
     (validateGrantType(grantType), validateAssertionType(assertionType)).tupled.as(()).toEither
 
-  private def validateGrantType(grantType: String): ValidatedNel[ClientAssertionValidationError, Unit] =
+  private def validateGrantType(grantType: String): ValidatedNel[ValidationFailure, Unit] =
     if (grantType != clientCredentialsGrantType) InvalidGrantType(grantType).invalidNel
     else ().validNel
 
-  private def validateAssertionType(assertionType: String): ValidatedNel[ClientAssertionValidationError, Unit] =
+  private def validateAssertionType(assertionType: String): ValidatedNel[ValidationFailure, Unit] =
     if (assertionType != clientAssertionType) InvalidAssertionType(assertionType).invalidNel
     else ().validNel
 
   private def verifyConsumerClient(
     client: Client,
     clientAssertion: ClientAssertion
-  ): Either[NonEmptyList[ClientAssertionValidationError], Unit] =
+  ): Either[NonEmptyList[StatesVerificationFailure], Unit] =
     for {
       purposeId <- clientAssertion.purposeId
-        .fold[ValidationResult[UUID]](PurposeIdNotProvided.invalidNel)(_.validNel)
+        .fold[StatesValidationResult[UUID]](PurposeIdNotProvided.invalidNel)(_.validNel)
         .toEither
       purpose   <- client.purposes
         .find(_.states.purpose.purposeId == purposeId)
-        .fold[ValidationResult[Purpose]](PurposeNotFound(client.id, purposeId).invalidNel)(_.validNel)
+        .fold[StatesValidationResult[Purpose]](PurposeNotFound(client.id, purposeId).invalidNel)(_.validNel)
         .toEither
       _         <- checkConsumerClientValidity(purpose).toEither
     } yield ()

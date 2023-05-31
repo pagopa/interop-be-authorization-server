@@ -1,6 +1,7 @@
 package it.pagopa.interop.clientassertionvalidation.model
 
-import it.pagopa.interop.clientassertionvalidation.Errors.{ClientAssertionValidationError, DigestClaimNotFound}
+import it.pagopa.interop.clientassertionvalidation.Errors.DigestClaimNotFound
+import it.pagopa.interop.clientassertionvalidation.utils.ValidationTypes.ValidationFailure
 
 import java.util
 import scala.jdk.CollectionConverters.MapHasAsJava
@@ -14,7 +15,7 @@ object Digest {
   final val algClaim   = "alg"
   final val valueClaim = "value"
 
-  def create(rawDigest: Map[String, AnyRef]): Either[ClientAssertionValidationError, Digest] = for {
+  def create(rawDigest: Map[String, AnyRef]): Either[ValidationFailure, Digest] = for {
     alg   <- rawDigest.get(algClaim).map(_.toString).toRight(DigestClaimNotFound(algClaim))
     value <- rawDigest.get(valueClaim).map(_.toString).toRight(DigestClaimNotFound(valueClaim))
   } yield Digest(alg, value)

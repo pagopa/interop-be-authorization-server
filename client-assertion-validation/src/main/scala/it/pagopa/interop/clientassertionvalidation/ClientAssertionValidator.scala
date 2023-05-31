@@ -9,6 +9,7 @@ import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import com.nimbusds.jwt.{JWTClaimsSet, SignedJWT}
 import it.pagopa.interop.clientassertionvalidation.Errors._
 import it.pagopa.interop.clientassertionvalidation.model._
+import it.pagopa.interop.clientassertionvalidation.utils.ValidationTypes._
 import it.pagopa.interop.commons.utils.TypeConversions._
 import it.pagopa.interop.commons.utils.{DIGEST_CLAIM, PURPOSE_ID_CLAIM}
 
@@ -20,12 +21,12 @@ trait ClientAssertionValidator {
   def validateClientAssertion(
     clientAssertionJws: String,
     clientId: Option[UUID]
-  ): Either[NonEmptyList[ClientAssertionValidationError], AssertionValidationResult]
+  ): Either[NonEmptyList[ValidationFailure], AssertionValidationResult]
 
   def verifySignature(
     validationResult: AssertionValidationResult,
     publicKey: String
-  ): Either[ClientAssertionValidationError, Unit]
+  ): Either[SignatureVerificationFailure, Unit]
 }
 
 final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extends ClientAssertionValidator {
@@ -37,7 +38,7 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
   override def validateClientAssertion(
     clientAssertionJws: String,
     clientId: Option[UUID]
-  ): Either[NonEmptyList[ClientAssertionValidationError], AssertionValidationResult] =
+  ): Either[NonEmptyList[ValidationFailure], AssertionValidationResult] =
     for {
       jwt             <- parseClientAssertion(clientAssertionJws)
       clientAssertion <- verifyClaims(jwt, clientId, clientAssertionJws)
@@ -46,7 +47,7 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
   override def verifySignature(
     validationResult: AssertionValidationResult,
     publicKey: String
-  ): Either[ClientAssertionValidationError, Unit] =
+  ): Either[SignatureVerificationFailure, Unit] =
     for {
       verifier         <- rsaVerifier(publicKey)
       signatureIsValid <- Try(validationResult.jwt.verify(verifier)).toEither.leftMap(ex =>
@@ -59,7 +60,7 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
     jwt: SignedJWT,
     clientId: Option[UUID],
     clientAssertion: String
-  ): Either[NonEmptyList[ClientAssertionValidationError], ClientAssertion] =
+  ): Either[NonEmptyList[ValidationFailure], ClientAssertion] =
     (
       validateStandardClaims(jwt),
       getOrFail(jwt.getHeader.getKeyID, KidNotFound),
@@ -88,14 +89,12 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
       )
     }.toEither
 
-  private def parseClientAssertion(
-    clientAssertion: String
-  ): Either[NonEmptyList[ClientAssertionParseFailed], SignedJWT] =
+  private def parseClientAssertion(clientAssertion: String): Either[NonEmptyList[ValidationFailure], SignedJWT] =
     Try(SignedJWT.parse(clientAssertion)).toEither.leftMap(ex =>
       NonEmptyList.one(ClientAssertionParseFailed(ex.getMessage))
     )
 
-  private def validateStandardClaims(jwt: SignedJWT): ValidatedNel[ClientAssertionInvalidClaims, Unit] =
+  private def validateStandardClaims(jwt: SignedJWT): ValidatedNel[ValidationFailure, Unit] =
     Try(claimsVerifier.verify(jwt.getJWTClaimsSet, null)).toEither
       .leftMap(ex => ClientAssertionInvalidClaims(ex.getMessage))
       .toValidatedNel
@@ -112,10 +111,7 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
     new RSASSAVerifier(publicKey)
   }.toEither.leftMap(ex => PublicKeyParseFailed(ex.getMessage))
 
-  private def subjectClaim(
-    clientId: Option[UUID],
-    subject: => String
-  ): ValidatedNel[ClientAssertionValidationError, UUID] =
+  private def subjectClaim(clientId: Option[UUID], subject: => String): ValidatedNel[ValidationFailure, UUID] =
     Try(Option(subject)).flatMap(_.traverse(_.toUUID)) match {
       case Failure(_)                                     => InvalidSubjectFormat(Try(subject).getOrElse("")).invalidNel
       case Success(None)                                  => SubjectNotFound.invalidNel
@@ -123,7 +119,7 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
       case Success(Some(s))                               => InvalidSubject(s.toString).invalidNel
     }
 
-  protected def purposeIdClaim(purposeId: => String): ValidatedNel[ClientAssertionValidationError, Option[UUID]] =
+  protected def purposeIdClaim(purposeId: => String): ValidatedNel[ValidationFailure, Option[UUID]] =
     Try(Option(purposeId))
       .flatMap(_.traverse(_.toUUID))
       .toEither
@@ -133,7 +129,7 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
   private def audience(
     receivedAudiences: Set[String],
     expectedAudiences: Set[String]
-  ): ValidatedNel[ClientAssertionValidationError, Set[String]] =
+  ): ValidatedNel[ValidationFailure, Set[String]] =
     Either
       .cond(
         receivedAudiences.intersect(expectedAudiences).nonEmpty,
@@ -142,18 +138,16 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
       )
       .toValidatedNel
 
-  private def digestClaim(claimSet: JWTClaimsSet): ValidatedNel[ClientAssertionValidationError, Option[Digest]] = {
+  private def digestClaim(claimSet: JWTClaimsSet): ValidatedNel[ValidationFailure, Option[Digest]] = {
     val found: Option[Map[String, AnyRef]] = Option(claimSet.getJSONObjectClaim(DIGEST_CLAIM)).map(_.asScala.toMap)
     found.traverse(rawDigest => extractDigestClaimsNumber(rawDigest).flatMap(verifyDigestLength)).toValidatedNel
   }
 
-  private def extractDigestClaimsNumber(
-    rawDigest: Map[String, AnyRef]
-  ): Either[ClientAssertionValidationError, Digest] =
+  private def extractDigestClaimsNumber(rawDigest: Map[String, AnyRef]): Either[ValidationFailure, Digest] =
     if (rawDigest.keySet.size == 2) Digest.create(rawDigest)
     else Left(InvalidDigestClaims)
 
-  private def verifyDigestLength(digest: Digest): Either[ClientAssertionValidationError, Digest] = digest.alg match {
+  private def verifyDigestLength(digest: Digest): Either[ValidationFailure, Digest] = digest.alg match {
     case SHA_256 if digest.value.length == 64 => Right(digest)
     case SHA_256                              => Left(InvalidHashLength(SHA_256))
     case _                                    => Left(InvalidHashAlgorithm)
