@@ -1,15 +1,36 @@
 package it.pagopa.interop.authorizationserver.utils
 
+import cats.implicits.catsSyntaxOptionId
+import it.pagopa.interop.authorizationmanagement.client.model.{Client, ClientComponentState, ClientKind, KeyWithClient}
 import it.pagopa.interop.authorizationserver.model.{ClientAssertionDetails, JWTDetailsMessage}
 import it.pagopa.interop.clientassertionvalidation.SpecData._
+import it.pagopa.interop.clientassertionvalidation.SpecUtil.{fastClientAssertionJWT, keyFromRSAKey}
 import it.pagopa.interop.commons.jwt.model.Token
+import it.pagopa.interop.commons.utils.PURPOSE_ID_CLAIM
 
 import java.time.{OffsetDateTime, ZoneOffset}
-import java.util.UUID
+import java.util.{Date, UUID}
 
 object SpecData {
   val correlationId: String = UUID.randomUUID().toString
   final val timestamp       = OffsetDateTime.of(2022, 12, 31, 11, 22, 33, 44, ZoneOffset.UTC)
+
+  val clientId: UUID             = UUID.randomUUID()
+  val purposeId: UUID            = UUID.randomUUID()
+  val clientAssertionJti: String = UUID.randomUUID().toString
+  val clientAssertionIssuedAt    = 1650621859L
+  val clientAssertionExpiresAt   = 4102354800L
+  val clientAssertionAudience    = "test.interop.pagopa.it"
+
+  val validClientAssertion: String = fastClientAssertionJWT(
+    issuer = clientId.toString.some,
+    subject = clientId.toString.some,
+    jti = clientAssertionJti.some,
+    iat = new Date(clientAssertionIssuedAt * 1000).some,
+    expirationTime = new Date(clientAssertionExpiresAt * 1000).some,
+    audience = List(clientAssertionAudience),
+    customClaims = Map(PURPOSE_ID_CLAIM -> purposeId.toString)
+  )
 
   val generatedToken: Token = Token(
     serialized = "generated-jwt",
@@ -47,12 +68,22 @@ object SpecData {
       jwtId = clientAssertionJti,
       issuedAt = clientAssertionIssuedAt * 1000,
       algorithm = clientAssertionAlgorithm,
-      keyId = clientAssertionKid,
+      keyId = rsaKid,
       issuer = clientId.toString,
       subject = clientId.toString,
       audience = clientAssertionAudience,
       expirationTime = clientAssertionExpiresAt * 1000
     )
   )
+
+  val activeClient: Client = makeClient(
+    purposeState = ClientComponentState.ACTIVE,
+    eServiceState = ClientComponentState.ACTIVE,
+    agreementState = ClientComponentState.ACTIVE,
+    kind = ClientKind.CONSUMER,
+    purposeId = purposeId
+  ).copy(id = clientId)
+
+  val localKeyWithClient: KeyWithClient = KeyWithClient(key = keyFromRSAKey(rsaKid, rsaKey), client = activeClient)
 
 }

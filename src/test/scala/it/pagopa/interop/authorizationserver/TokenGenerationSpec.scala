@@ -9,7 +9,15 @@ import it.pagopa.interop.authorizationserver.error.AuthServerErrors.KeyNotFound
 import it.pagopa.interop.authorizationserver.model.{ClientCredentialsResponse, JWTDetailsMessage, TokenType}
 import it.pagopa.interop.authorizationserver.utils.SpecData._
 import it.pagopa.interop.authorizationserver.utils.{BaseSpec, SpecHelper}
-import it.pagopa.interop.clientassertionvalidation.SpecData._
+import it.pagopa.interop.clientassertionvalidation.SpecData.{
+  anotherModelKey,
+  clientAssertionType,
+  eServiceTokenDuration,
+  grantType,
+  makeClient,
+  rsaKid
+}
+//import it.pagopa.interop.clientassertionvalidation.SpecData._
 import it.pagopa.interop.commons.utils.CORRELATION_ID_HEADER
 import org.scalatest.matchers.should.Matchers._
 import spray.json.JsonWriter
@@ -39,9 +47,9 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
     "fail if kid in the assertion is not found for the given client ID" in {
       (mockAuthorizationManagementService
         .getKeyWithClient(_: UUID, _: String)(_: Seq[(String, String)]))
-        .expects(clientId, clientAssertionKid, *)
+        .expects(clientId, rsaKid, *)
         .once()
-        .returns(Future.failed(KeyNotFound(clientId, clientAssertionKid)))
+        .returns(Future.failed(KeyNotFound(clientId, rsaKid)))
 
       Get() ~> service.createToken(
         Some(clientId.toString),
@@ -54,7 +62,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
     }
 
     "skip rate limiting if client assertion signature verification fails" in {
-      mockKeyRetrieve(keyWithClient.copy(key = anotherModelKey))
+      mockKeyRetrieve(localKeyWithClient.copy(key = anotherModelKey))
 
       Get() ~> service.createToken(
         Some(clientId.toString),
@@ -67,7 +75,9 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
     }
 
     "trigger rate limiting if platform state verification fails" in {
-      mockKeyRetrieve(result = keyWithClient.copy(client = makeClient(purposeState = ClientComponentState.INACTIVE)))
+      mockKeyRetrieve(result =
+        localKeyWithClient.copy(client = makeClient(purposeState = ClientComponentState.INACTIVE))
+      )
       mockRateLimiterExec()
 
       Get() ~> service.createToken(
@@ -130,7 +140,7 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
     "succeed with correct request" in {
       val apiClient = makeClient(kind = ClientKind.API).copy(purposes = Seq.empty)
 
-      mockKeyRetrieve(result = keyWithClient.copy(client = apiClient))
+      mockKeyRetrieve(result = localKeyWithClient.copy(client = apiClient))
       mockApiTokenGeneration()
       mockRateLimiterExec()
 

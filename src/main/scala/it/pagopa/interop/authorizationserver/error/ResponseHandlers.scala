@@ -28,7 +28,9 @@ object ResponseHandlers extends AkkaResponses {
           s"Requests limit exceeded for organization ${ex.tenantId}",
           Headers.headersFromStatus(ex.status)
         )
-      case Failure(ex)                                           => internalServerError(ex, logMessage)
+      case Failure(ex)                                           =>
+        println(ex)
+        internalServerError(ex, logMessage)
     }
 
   private[this] def genericBadRequest(error: ComponentError, logMessage: String)(implicit
