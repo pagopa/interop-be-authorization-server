@@ -5,6 +5,12 @@ import it.pagopa.interop.authorizationmanagement.client.model.KeyWithClient
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
 import it.pagopa.interop.authorizationserver.model.JWTDetailsMessage
 import it.pagopa.interop.authorizationserver.utils.SpecData._
+import it.pagopa.interop.clientassertionvalidation.SpecData.{
+  consumerId,
+  eServiceAudience,
+  eServiceTokenDuration,
+  rsaKid
+}
 import it.pagopa.interop.commons.logging.ContextFieldsToLog
 import it.pagopa.interop.commons.ratelimiter.model.RateLimitStatus
 import it.pagopa.interop.commons.utils.{ORGANIZATION_ID_CLAIM, PURPOSE_ID_CLAIM}
@@ -16,10 +22,10 @@ import scala.concurrent.{ExecutionContext, Future}
 
 trait SpecHelper { self: BaseSpec =>
 
-  def mockKeyRetrieve(result: KeyWithClient = keyWithClient) =
+  def mockKeyRetrieve(result: KeyWithClient = localKeyWithClient) =
     (mockAuthorizationManagementService
       .getKeyWithClient(_: UUID, _: String)(_: Seq[(String, String)]))
-      .expects(clientId, clientAssertionKid, *)
+      .expects(clientId, rsaKid, *)
       .once()
       .returns(Future.successful(result))
 

@@ -20,16 +20,8 @@ object ResponseHandlers extends AkkaResponses {
   )(result: Try[T])(implicit contexts: Seq[(String, String)], logger: LoggerTakingImplicit[ContextFieldsToLog]): Route =
     result match {
       case Success(s)                                            => success(s)
-      case Failure(ex: PurposeNotFound)                          => genericBadRequest(ex, logMessage)
-      case Failure(ex: PurposeIdNotProvided.type)                => genericBadRequest(ex, logMessage)
       case Failure(ex: KeyNotFound)                              => genericBadRequest(ex, logMessage)
-      case Failure(ex: InactiveClient)                           => genericBadRequest(ex, logMessage)
-      case Failure(ex: InactivePurpose)                          => genericBadRequest(ex, logMessage)
-      case Failure(ex: InactiveEService)                         => genericBadRequest(ex, logMessage)
-      case Failure(ex: InactiveAgreement)                        => genericBadRequest(ex, logMessage)
-      case Failure(ex: InvalidAssertion)                         => genericBadRequest(ex, logMessage)
-      case Failure(ex: InvalidAssertionSignature)                => genericBadRequest(ex, logMessage)
-      case Failure(ex: InvalidClientIdFormat)                    => genericBadRequest(ex, logMessage)
+      case Failure(ex: ClientAssertionValidationWrapper)         => genericBadRequest(ex, logMessage)
       case Failure(ex: ratelimiter.error.Errors.TooManyRequests) =>
         tooManyRequests(
           TooManyRequests,

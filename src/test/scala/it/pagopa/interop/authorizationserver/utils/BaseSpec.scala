@@ -2,15 +2,13 @@ package it.pagopa.interop.authorizationserver.utils
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
-import com.nimbusds.jose.proc.SecurityContext
-import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
 import it.pagopa.interop.authorizationserver.api.AuthApiService
 import it.pagopa.interop.authorizationserver.api.impl.{AuthApiServiceImpl, _}
 import it.pagopa.interop.authorizationserver.model.ClientCredentialsResponse
 import it.pagopa.interop.authorizationserver.service.{AuthorizationManagementService, QueueService}
-import it.pagopa.interop.commons.jwt.service.impl.{DefaultClientAssertionValidator, getClaimsVerifier}
-import it.pagopa.interop.commons.jwt.service.{ClientAssertionValidator, InteropTokenGenerator}
-import it.pagopa.interop.commons.jwt.{KID, PublicKeysHolder, SerializedKey}
+import it.pagopa.interop.clientassertionvalidation.SpecData.clientAssertionAudience
+import it.pagopa.interop.clientassertionvalidation.{ClientAssertionValidator, NimbusClientAssertionValidator}
+import it.pagopa.interop.commons.jwt.service.InteropTokenGenerator
 import it.pagopa.interop.commons.ratelimiter.RateLimiter
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.wordspec.AnyWordSpecLike
@@ -21,11 +19,7 @@ import scala.concurrent.ExecutionContext
 trait BaseSpec extends AnyWordSpecLike with SprayJsonSupport with DefaultJsonProtocol with MockFactory {
 
   def clientAssertionValidator(clientAssertionAudience: String): ClientAssertionValidator =
-    new DefaultClientAssertionValidator with PublicKeysHolder {
-      var publicKeyset: Map[KID, SerializedKey]                                        = Map.empty
-      override protected val claimsVerifier: DefaultJWTClaimsVerifier[SecurityContext] =
-        getClaimsVerifier(audience = Set(clientAssertionAudience))
-    }
+    new NimbusClientAssertionValidator(Set(clientAssertionAudience))
 
   val mockInteropTokenGenerator: InteropTokenGenerator                   = mock[InteropTokenGenerator]
   val mockAuthorizationManagementService: AuthorizationManagementService = mock[AuthorizationManagementService]
@@ -35,7 +29,7 @@ trait BaseSpec extends AnyWordSpecLike with SprayJsonSupport with DefaultJsonPro
   def service(implicit ec: ExecutionContext): AuthApiService = customService()
 
   def customService(
-    clientAssertionAudience: String = SpecData.clientAssertionAudience
+    clientAssertionAudience: String = clientAssertionAudience
   )(implicit ec: ExecutionContext): AuthApiService =
     AuthApiServiceImpl(
       authorizationManagementService = mockAuthorizationManagementService,
