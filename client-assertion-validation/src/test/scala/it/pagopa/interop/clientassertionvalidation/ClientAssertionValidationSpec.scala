@@ -14,6 +14,7 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import java.util.UUID
+import scala.jdk.CollectionConverters.MapHasAsJava
 
 class ClientAssertionValidationSpec extends AnyWordSpecLike {
 
@@ -168,7 +169,8 @@ class ClientAssertionValidationSpec extends AnyWordSpecLike {
     }
 
     "fail when digest algorithm is missing" in {
-      val digest    = Map("value" -> "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")
+      val digest    =
+        Map("value" -> "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", "foo" -> "bar").asJava
       val assertion = fastClientAssertionJWT(customClaims = Map(DIGEST_CLAIM -> digest))
 
       validateClientAssertion(clientId.toString.some, assertion, clientAssertionType, grantType)(
@@ -176,9 +178,8 @@ class ClientAssertionValidationSpec extends AnyWordSpecLike {
       ) shouldBe Left(NonEmptyList.of(DigestClaimNotFound("alg")))
     }
 
-    // TODO This validation returns DigestClaimNotFound(alg) instead of DigestClaimNotFound(value)
-    "fail when digest value is missing" ignore {
-      val digest    = Map("alg" -> "SHA256")
+    "fail when digest value is missing" in {
+      val digest    = Map("alg" -> "SHA256", "foo" -> "bar").asJava
       val assertion = fastClientAssertionJWT(customClaims = Map(DIGEST_CLAIM -> digest))
 
       validateClientAssertion(clientId.toString.some, assertion, clientAssertionType, grantType)(
@@ -191,7 +192,7 @@ class ClientAssertionValidationSpec extends AnyWordSpecLike {
         "alg"   -> "SHA256",
         "value" -> "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
         "foo"   -> "bar"
-      )
+      ).asJava
       val assertion = fastClientAssertionJWT(customClaims = Map(DIGEST_CLAIM -> digest))
 
       validateClientAssertion(clientId.toString.some, assertion, clientAssertionType, grantType)(
