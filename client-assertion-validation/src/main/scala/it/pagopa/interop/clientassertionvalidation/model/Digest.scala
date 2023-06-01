@@ -16,7 +16,7 @@ object Digest {
   final val valueClaim = "value"
 
   def create(rawDigest: Map[String, AnyRef]): Either[ValidationFailure, Digest] = for {
-    alg   <- rawDigest.get(algClaim).map(_.toString).toRight(DigestClaimNotFound(algClaim))
-    value <- rawDigest.get(valueClaim).map(_.toString).toRight(DigestClaimNotFound(valueClaim))
+    alg   <- rawDigest.get(algClaim).flatMap(Option(_).map(_.toString)).toRight(DigestClaimNotFound(algClaim))
+    value <- rawDigest.get(valueClaim).flatMap(Option(_).map(_.toString)).toRight(DigestClaimNotFound(valueClaim))
   } yield Digest(alg, value)
 }

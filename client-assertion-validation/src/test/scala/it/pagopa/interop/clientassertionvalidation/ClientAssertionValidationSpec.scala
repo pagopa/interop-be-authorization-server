@@ -187,6 +187,25 @@ class ClientAssertionValidationSpec extends AnyWordSpecLike {
       ) shouldBe Left(NonEmptyList.of(DigestClaimNotFound("value")))
     }
 
+    "fail when digest algorithm is null" in {
+      val digest    =
+        Map("alg" -> null, "value" -> "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824").asJava
+      val assertion = fastClientAssertionJWT(customClaims = Map(DIGEST_CLAIM -> digest))
+
+      validateClientAssertion(clientId.toString.some, assertion, clientAssertionType, grantType)(
+        jwtValidator
+      ) shouldBe Left(NonEmptyList.of(DigestClaimNotFound("alg")))
+    }
+
+    "fail when digest value is null" in {
+      val digest    = Map("alg" -> "SHA256", "value" -> null).asJava
+      val assertion = fastClientAssertionJWT(customClaims = Map(DIGEST_CLAIM -> digest))
+
+      validateClientAssertion(clientId.toString.some, assertion, clientAssertionType, grantType)(
+        jwtValidator
+      ) shouldBe Left(NonEmptyList.of(DigestClaimNotFound("value")))
+    }
+
     "fail when digest contains too many fields" in {
       val digest    = Map(
         "alg"   -> "SHA256",
