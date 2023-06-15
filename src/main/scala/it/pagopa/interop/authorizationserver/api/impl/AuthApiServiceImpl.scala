@@ -22,7 +22,7 @@ import it.pagopa.interop.authorizationserver.model.{
 import it.pagopa.interop.authorizationserver.service.{AuthorizationManagementService, QueueService}
 import it.pagopa.interop.clientassertionvalidation.Errors.{PurposeIdNotProvided, PurposeNotFound}
 import it.pagopa.interop.clientassertionvalidation.Validation._
-import it.pagopa.interop.clientassertionvalidation.model.ClientAssertion
+import it.pagopa.interop.clientassertionvalidation.model.{AssertionValidationResult, ClientAssertion}
 import it.pagopa.interop.clientassertionvalidation.ClientAssertionValidator
 import it.pagopa.interop.commons.jwt.model.Token
 import it.pagopa.interop.commons.jwt.service.InteropTokenGenerator
@@ -61,12 +61,15 @@ final case class AuthApiServiceImpl(
     toEntityMarshallerClientCredentialsResponse: ToEntityMarshaller[ClientCredentialsResponse],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
+    logger.info(s"[CLIENTID=${clientId.getOrElse("")}] Token requested")
     val result: Future[(ClientCredentialsResponse, RateLimitStatus)] = for {
-      validation    <- validateClientAssertion(clientId, clientAssertion, clientAssertionType, grantType)(jwtValidator)
+      validation <- validateClientAssertion(clientId, clientAssertion, clientAssertionType, grantType)(jwtValidator)
         .leftMap(ClientAssertionValidationWrapper)
         .toFuture
+      _ = log(validation = validation, client = None, token = None, "Token validated")
       keyWithClient <- getTokenGenerationBundle(validation.clientAssertion.sub, validation.clientAssertion.kid)
-      _             <- verifyClientAssertionSignature(keyWithClient, validation)(jwtValidator)
+      _ = log(validation = validation, client = keyWithClient.client.some, token = None, "Token key retrieved")
+      _               <- verifyClientAssertionSignature(keyWithClient, validation)(jwtValidator)
         .leftMap(ex => ClientAssertionValidationWrapper(NonEmptyList.one(ex)))
         .toFuture
       rateLimitStatus <- rateLimiter.rateLimiting(keyWithClient.client.consumerId)
@@ -74,9 +77,7 @@ final case class AuthApiServiceImpl(
         .leftMap(ClientAssertionValidationWrapper)
         .toFuture
       token           <- generateToken(keyWithClient.client, validation.clientAssertion)
-      _ = logger.info(
-        s"Token with jti ${token.jti} generated for client ${keyWithClient.client.id} of type ${keyWithClient.client.kind.toString}"
-      )
+      _ = log(validation = validation, client = keyWithClient.client.some, token = token.some, "Token generated")
     } yield (
       ClientCredentialsResponse(access_token = token.serialized, token_type = Bearer, expires_in = token.expIn.toInt),
       rateLimitStatus
@@ -177,6 +178,21 @@ final case class AuthApiServiceImpl(
           logger.error(s"Unable to save JWT details to queue. Details: ${jwtDetails.readableString}", ex)
         )
       )
+  }
+
+  private def log(validation: AssertionValidationResult, client: Option[Client], token: Option[Token], message: String)(
+    implicit contexts: Seq[(String, String)]
+  ): Unit = {
+    val updatedContext    =
+      client.fold(contexts)(c => (contexts :+ ORGANIZATION_ID_CLAIM -> c.consumerId.toString).toSet.toList)
+    val clientId: String  = s"[CLIENTID=${validation.clientAssertion.sub}]"
+    val kid: String       = s"[KID=${validation.clientAssertion.kid}]"
+    val purposeId: String = s"[PURPOSEID=${validation.clientAssertion.purposeId.getOrElse("")}]"
+    val tokenType: String = client.fold("")(c => s"[TYPE=${c.kind.toString}]")
+    val jti: String       = token.fold("")(t => s"[JTI=${t.jti}]")
+
+    val msg: String = s"$clientId $kid $purposeId $tokenType $jti - $message"
+    logger.info(msg)(updatedContext)
   }
 
 }
