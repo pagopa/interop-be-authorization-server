@@ -62,43 +62,50 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
     clientId: Option[UUID],
     clientAssertion: String
   ): Either[NonEmptyList[ValidationFailure], ClientAssertion] =
-    (
-      validateStandardClaims(jwt),
-      getOrFail(jwt.getHeader.getKeyID, KidNotFound),
-      algorithm(jwt.getHeader.getAlgorithm.getName),
-      subjectClaim(clientId, jwt.getJWTClaimsSet.getSubject),
-      purposeIdClaim(jwt.getJWTClaimsSet.getStringClaim(PURPOSE_ID_CLAIM)),
-      getOrFail(jwt.getJWTClaimsSet.getJWTID, JtiNotFound),
-      getOrFail(jwt.getJWTClaimsSet.getIssueTime.getTime, IssuedAtNotFound),
-      getOrFail(jwt.getJWTClaimsSet.getIssuer, IssuerNotFound),
-      audience(jwt.getJWTClaimsSet.getAudience.asScala.toSet, expectedAudience),
-      getOrFail(jwt.getJWTClaimsSet.getExpirationTime.getTime, ExpirationNotFound),
-      digestClaim(jwt.getJWTClaimsSet)
-    ).tupled.map { case (_, kid, algorithm, subject, purposeId, jti, issuedAt, issuer, audience, expiration, digest) =>
-      ClientAssertion(
-        kid = kid,
-        alg = algorithm,
-        sub = subject,
-        purposeId = purposeId,
-        jti = jti,
-        iat = issuedAt,
-        iss = issuer,
-        aud = audience,
-        exp = expiration,
-        digest = digest,
-        raw = clientAssertion
-      )
-    }.toEither
+    for {
+      claimSet        <- validateStandardClaims(jwt)
+      clientAssertion <- (
+        getOrFail(jwt.getHeader.getKeyID, KidNotFound),
+        algorithm(jwt.getHeader.getAlgorithm.getName),
+        subjectClaim(clientId, claimSet.getSubject),
+        purposeIdClaim(claimSet.getStringClaim(PURPOSE_ID_CLAIM)),
+        getOrFail(claimSet.getJWTID, JtiNotFound),
+        getOrFail(claimSet.getIssueTime.getTime, IssuedAtNotFound),
+        getOrFail(claimSet.getIssuer, IssuerNotFound),
+        audience(claimSet.getAudience.asScala.toSet, expectedAudience),
+        getOrFail(claimSet.getExpirationTime.getTime, ExpirationNotFound),
+        digestClaim(claimSet)
+      ).tupled.map { case (kid, algorithm, subject, purposeId, jti, issuedAt, issuer, audience, expiration, digest) =>
+        ClientAssertion(
+          kid = kid,
+          alg = algorithm,
+          sub = subject,
+          purposeId = purposeId,
+          jti = jti,
+          iat = issuedAt,
+          iss = issuer,
+          aud = audience,
+          exp = expiration,
+          digest = digest,
+          raw = clientAssertion
+        )
+      }.toEither
+
+    } yield clientAssertion
 
   private def parseClientAssertion(clientAssertion: String): Either[NonEmptyList[ValidationFailure], SignedJWT] =
     Try(SignedJWT.parse(clientAssertion)).toEither.leftMap(ex =>
       NonEmptyList.one(ClientAssertionParseFailed(ex.getMessage))
     )
 
-  private def validateStandardClaims(jwt: SignedJWT): ValidatedNel[ValidationFailure, Unit] =
-    Try(claimsVerifier.verify(jwt.getJWTClaimsSet, null)).toEither
-      .leftMap(ex => ClientAssertionInvalidClaims(ex.getMessage))
-      .toValidatedNel
+  private def validateStandardClaims(jwt: SignedJWT): Either[NonEmptyList[ClientAssertionInvalidClaims], JWTClaimsSet] =
+    (
+      for {
+        claimSet <- Try(jwt.getJWTClaimsSet)
+        _        <- Try(claimsVerifier.verify(claimSet, null))
+      } yield claimSet
+    ).toEither
+      .leftMap(ex => NonEmptyList.one(ClientAssertionInvalidClaims(ex.getMessage)))
 
   private def getOrFail[E, T](value: => T, error: => E): ValidatedNel[E, T] =
     Try(Option(value)) match {
@@ -120,24 +127,29 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
       case Success(Some(s))                               => InvalidSubject(s.toString).invalidNel
     }
 
-  protected def purposeIdClaim(purposeId: => String): ValidatedNel[ValidationFailure, Option[UUID]] =
-    Try(Option(purposeId))
-      .flatMap(_.traverse(_.toUUID))
-      .toEither
-      .leftMap(_ => InvalidPurposeIdFormat(Option(purposeId).getOrElse("")))
-      .toValidatedNel
+  protected def purposeIdClaim(purposeId: => String): ValidatedNel[ValidationFailure, Option[UUID]] = {
+    val result =
+      for {
+        maybePurposeId   <- Try(Option(purposeId)).toEither.leftMap(ex => InvalidPurposeIdClaimFormat(ex.getMessage))
+        maybePurposeUuid <- maybePurposeId.traverse(pId =>
+          pId.toUUID.toEither.leftMap(_ => InvalidPurposeIdFormat(pId))
+        )
+      } yield maybePurposeUuid
+
+    result.toValidatedNel
+  }
 
   private def audience(
-    receivedAudiences: Set[String],
+    receivedAudiences: => Set[String],
     expectedAudiences: Set[String]
-  ): ValidatedNel[ValidationFailure, Set[String]] =
-    Either
-      .cond(
-        receivedAudiences.intersect(expectedAudiences).nonEmpty,
-        receivedAudiences,
-        InvalidAudiences(receivedAudiences)
-      )
-      .toValidatedNel
+  ): ValidatedNel[ValidationFailure, Set[String]] = {
+    val result = for {
+      audiences <- Try(receivedAudiences).toEither.leftMap(ex => InvalidAudienceFormat(ex.getMessage))
+      _ <- Left(InvalidAudiences(audiences)).withRight[Unit].unlessA(audiences.intersect(expectedAudiences).nonEmpty)
+    } yield audiences
+
+    result.toValidatedNel
+  }
 
   private def algorithm(alg: => String): ValidatedNel[ValidationFailure, String] =
     getOrFail(alg, AlgorithmNotFound).andThen(a =>
@@ -145,8 +157,16 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
     )
 
   private def digestClaim(claimSet: JWTClaimsSet): ValidatedNel[ValidationFailure, Option[Digest]] = {
-    val found: Option[Map[String, AnyRef]] = Option(claimSet.getJSONObjectClaim(DIGEST_CLAIM)).map(_.asScala.toMap)
-    found.traverse(rawDigest => extractDigestClaimsNumber(rawDigest).flatMap(verifyDigestLength)).toValidatedNel
+    val result = for {
+      maybeDigestClaim <- Try(Option(claimSet.getJSONObjectClaim(DIGEST_CLAIM)).map(_.asScala.toMap)).toEither.leftMap(
+        ex => InvalidDigestFormat(ex.getMessage)
+      )
+      maybeDigest      <- maybeDigestClaim.traverse(rawDigest =>
+        extractDigestClaimsNumber(rawDigest).flatMap(verifyDigestLength)
+      )
+    } yield maybeDigest
+
+    result.toValidatedNel
   }
 
   private def extractDigestClaimsNumber(rawDigest: Map[String, AnyRef]): Either[ValidationFailure, Digest] =
