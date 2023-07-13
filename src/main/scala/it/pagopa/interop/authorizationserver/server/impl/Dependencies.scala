@@ -21,6 +21,8 @@ import it.pagopa.interop.authorizationserver.service.impl._
 import it.pagopa.interop.clientassertionvalidation.ClientAssertionValidator
 import it.pagopa.interop.commons.jwt._
 import it.pagopa.interop.commons.jwt.service.impl.DefaultInteropTokenGenerator
+import it.pagopa.interop.commons.queue.config.SQSHandlerConfig
+import it.pagopa.interop.commons.queue.impl.SQSHandler
 import it.pagopa.interop.commons.ratelimiter.RateLimiter
 import it.pagopa.interop.commons.ratelimiter.impl.RedisRateLimiter
 import it.pagopa.interop.commons.signer.service.SignerService
@@ -55,8 +57,11 @@ trait Dependencies {
       }
     )(blockingEc)
 
-  private def queueService(blockingEc: ExecutionContextExecutor): QueueServiceImpl =
-    QueueServiceImpl(ApplicationConfiguration.jwtQueueUrl)(blockingEc)
+  private def queueService(blockingEc: ExecutionContextExecutor): QueueServiceImpl = {
+    val sqsHandlerConfig: SQSHandlerConfig = SQSHandlerConfig(queueUrl = ApplicationConfiguration.jwtQueueUrl)
+    val sqsHandler: SQSHandler             = SQSHandler(sqsHandlerConfig)(blockingEc)
+    QueueServiceImpl(sqsHandler)
+  }
 
   private def rateLimiter: RateLimiter =
     RedisRateLimiter(ApplicationConfiguration.rateLimiterConfigs, dateTimeSupplier)
