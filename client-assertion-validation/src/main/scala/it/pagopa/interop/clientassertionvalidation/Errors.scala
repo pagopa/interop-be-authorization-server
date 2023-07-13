@@ -133,4 +133,16 @@ object Errors {
       extends ClientAssertionValidationError("8029", s"Algorithm $algorithm is not allowed")
       with ClientAssertionValidationFailure
 
+  final case class InvalidPurposeIdClaimFormat(reason: String)
+      extends ClientAssertionValidationError("8030", s"Unexpected format for Purpose Id. Reason: $reason")
+      with ClientAssertionValidationFailure
+
+  final case class InvalidAudienceFormat(reason: String)
+      extends ClientAssertionValidationError("8031", s"Invalid format for audience claim. Reason: $reason")
+      with ClientAssertionValidationFailure
+
+  final case class InvalidDigestFormat(reason: String)
+      extends ClientAssertionValidationError("8032", s"Invalid format for digest claim. Reason: $reason")
+      with ClientAssertionValidationFailure
+
 }

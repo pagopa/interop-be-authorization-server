@@ -4,6 +4,7 @@ import cats.data.NonEmptyList
 import cats.implicits.catsSyntaxOptionId
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
+import com.nimbusds.jwt.JWTClaimNames
 import it.pagopa.interop.clientassertionvalidation.Errors._
 import it.pagopa.interop.clientassertionvalidation.SpecData._
 import it.pagopa.interop.clientassertionvalidation.SpecUtil._
@@ -138,6 +139,16 @@ class ClientAssertionValidationSpec extends AnyWordSpecLike {
       ) shouldBe Left(NonEmptyList.of(ExpirationNotFound))
     }
 
+    "fail on IAT wrong format" in {
+      val assertion = fastClientAssertionJWT(customClaims = Map(JWTClaimNames.ISSUED_AT -> "foo"))
+
+      validateClientAssertion(clientId.toString.some, assertion, clientAssertionType, grantType)(
+        jwtValidator
+      ) shouldBe Left(
+        NonEmptyList.of(ClientAssertionInvalidClaims("Unexpected type of JSON object member with key iat"))
+      )
+    }
+
     "fail on algorithm not allowed" in {
       val ecKey = new ECKeyGenerator(Curve.P_256).generate
       val ecKid = ecKey.computeThumbprint().toJSONString
@@ -217,6 +228,15 @@ class ClientAssertionValidationSpec extends AnyWordSpecLike {
       validateClientAssertion(clientId.toString.some, assertion, clientAssertionType, grantType)(
         jwtValidator
       ) shouldBe Left(NonEmptyList.of(InvalidDigestClaims))
+    }
+
+    "fail when digest claim is not an object" in {
+      val digest    = "foo"
+      val assertion = fastClientAssertionJWT(customClaims = Map(DIGEST_CLAIM -> digest))
+
+      validateClientAssertion(clientId.toString.some, assertion, clientAssertionType, grantType)(
+        jwtValidator
+      ) shouldBe Left(NonEmptyList.of(InvalidDigestFormat("""The "digest" claim is not a JSON object or Map""")))
     }
 
     "fail on multiple validation errors" in {
