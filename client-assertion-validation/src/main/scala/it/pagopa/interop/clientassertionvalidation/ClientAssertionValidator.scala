@@ -13,6 +13,7 @@ import it.pagopa.interop.clientassertionvalidation.utils.ValidationTypes._
 import it.pagopa.interop.commons.utils.TypeConversions._
 import it.pagopa.interop.commons.utils.{DIGEST_CLAIM, PURPOSE_ID_CLAIM}
 
+import java.net.URLEncoder
 import java.util.UUID
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
@@ -65,7 +66,7 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
     for {
       claimSet        <- validateStandardClaims(jwt)
       clientAssertion <- (
-        getOrFail(jwt.getHeader.getKeyID, KidNotFound),
+        kidHeader(jwt.getHeader.getKeyID),
         algorithm(jwt.getHeader.getAlgorithm.getName),
         subjectClaim(clientId, claimSet.getSubject),
         purposeIdClaim(claimSet.getStringClaim(PURPOSE_ID_CLAIM)),
@@ -138,6 +139,13 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
 
     result.toValidatedNel
   }
+
+  protected def kidHeader(kid: => String): ValidatedNel[ValidationFailure, String] =
+    getOrFail(kid, KidNotFound).andThen { k =>
+      // Verify that kid does not contain special characters
+      if (k == URLEncoder.encode(k, "UTF-8")) k.validNel
+      else InvalidKidFormat.invalidNel
+    }
 
   private def audience(
     receivedAudiences: => Set[String],

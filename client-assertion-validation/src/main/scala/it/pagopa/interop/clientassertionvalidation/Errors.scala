@@ -145,4 +145,8 @@ object Errors {
       extends ClientAssertionValidationError("8032", s"Invalid format for digest claim. Reason: $reason")
       with ClientAssertionValidationFailure
 
+  object InvalidKidFormat
+      extends ClientAssertionValidationError("8033", s"Unexpected format for kid")
+      with ClientAssertionValidationFailure
+
 }

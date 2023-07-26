@@ -22,7 +22,7 @@ object SpecData {
   val assertionExpirationTime: Date =
     Date.from(OffsetDateTime.of(2099, 12, 31, 23, 59, 59, 59, ZoneOffset.UTC).toInstant)
   val rsaKey: RSAKey                = new RSAKeyGenerator(2048).generate
-  val rsaKid: String                = rsaKey.computeThumbprint().toJSONString
+  val rsaKid: String                = rsaKey.computeThumbprint().toString
   val rsaPrivateKey: String         = rsaKey.toJSONString
 
   val clientId: UUID           = UUID.randomUUID()
