@@ -99,6 +99,14 @@ class ClientAssertionValidationSpec extends AnyWordSpecLike {
       ) shouldBe Left(NonEmptyList.of(KidNotFound))
     }
 
+    "fail when kid wrong format" in {
+      val assertion = fastClientAssertionJWT(kid = Some("foo/bar"))
+
+      validateClientAssertion(clientId.toString.some, assertion, clientAssertionType, grantType)(
+        jwtValidator
+      ) shouldBe Left(NonEmptyList.of(InvalidKidFormat))
+    }
+
     "fail when subject is missing" in {
       val assertion = fastClientAssertionJWT(subject = None)
 
@@ -151,7 +159,7 @@ class ClientAssertionValidationSpec extends AnyWordSpecLike {
 
     "fail on algorithm not allowed" in {
       val ecKey = new ECKeyGenerator(Curve.P_256).generate
-      val ecKid = ecKey.computeThumbprint().toJSONString
+      val ecKid = ecKey.computeThumbprint().toString
 
       val assertion =
         fastClientAssertionJWT(algorithm = "ES256".some, kid = ecKid.some, privateKeyPEM = ecKey.toJSONString.some)
