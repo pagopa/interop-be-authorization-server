@@ -91,8 +91,24 @@ class ClientAssertionValidationSpec extends AnyWordSpecLike {
       ) shouldBe Left(NonEmptyList.one(InvalidPurposeIdFormat("not-an-uuid")))
     }
 
+    "fail when purpose id is ampty string" in {
+      val assertion = fastClientAssertionJWT(customClaims = Map(PURPOSE_ID_CLAIM -> ""))
+
+      validateClientAssertion(Some(clientId.toString), assertion, clientAssertionType, grantType)(
+        jwtValidator
+      ) shouldBe Left(NonEmptyList.one(InvalidPurposeIdFormat("")))
+    }
+
     "fail when kid is missing" in {
       val assertion = fastClientAssertionJWT(kid = None)
+
+      validateClientAssertion(clientId.toString.some, assertion, clientAssertionType, grantType)(
+        jwtValidator
+      ) shouldBe Left(NonEmptyList.of(KidNotFound))
+    }
+
+    "fail when kid is an empty string" in {
+      val assertion = fastClientAssertionJWT(kid = Some(""))
 
       validateClientAssertion(clientId.toString.some, assertion, clientAssertionType, grantType)(
         jwtValidator
@@ -113,6 +129,14 @@ class ClientAssertionValidationSpec extends AnyWordSpecLike {
       validateClientAssertion(clientId.toString.some, assertion, clientAssertionType, grantType)(
         jwtValidator
       ) shouldBe Left(NonEmptyList.of(SubjectNotFound))
+    }
+
+    "fail when subject is empty string" in {
+      val assertion = fastClientAssertionJWT(subject = Some(""))
+
+      validateClientAssertion(clientId.toString.some, assertion, clientAssertionType, grantType)(
+        jwtValidator
+      ) shouldBe Left(NonEmptyList.one(InvalidSubjectFormat("")))
     }
 
     "fail when JTI is missing" in {
@@ -149,6 +173,16 @@ class ClientAssertionValidationSpec extends AnyWordSpecLike {
 
     "fail on IAT wrong format" in {
       val assertion = fastClientAssertionJWT(customClaims = Map(JWTClaimNames.ISSUED_AT -> "foo"))
+
+      validateClientAssertion(clientId.toString.some, assertion, clientAssertionType, grantType)(
+        jwtValidator
+      ) shouldBe Left(
+        NonEmptyList.of(ClientAssertionInvalidClaims("Unexpected type of JSON object member with key iat"))
+      )
+    }
+
+    "fail on IAT empty string" in {
+      val assertion = fastClientAssertionJWT(customClaims = Map(JWTClaimNames.ISSUED_AT -> ""))
 
       validateClientAssertion(clientId.toString.some, assertion, clientAssertionType, grantType)(
         jwtValidator
