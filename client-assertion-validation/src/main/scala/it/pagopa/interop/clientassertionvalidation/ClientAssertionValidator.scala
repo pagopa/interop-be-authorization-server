@@ -111,7 +111,7 @@ final class NimbusClientAssertionValidator(expectedAudience: Set[String]) extend
   private def getOrFail[E, T](value: => T, error: => E): ValidatedNel[E, T] =
     Try(Option(value)) match {
       case Failure(_) | Success(None)                 => error.invalidNel
-      case Success(v) if v.exists(_.toString.isEmpty) => error.invalidNel
+      case Success(v) if v.exists(_.toString.isBlank) => error.invalidNel
       case Success(Some(v))                           => v.validNel
     }
 

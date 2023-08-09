@@ -91,7 +91,7 @@ class ClientAssertionValidationSpec extends AnyWordSpecLike {
       ) shouldBe Left(NonEmptyList.one(InvalidPurposeIdFormat("not-an-uuid")))
     }
 
-    "fail when purpose id is ampty string" in {
+    "fail when purpose id is empty string" in {
       val assertion = fastClientAssertionJWT(customClaims = Map(PURPOSE_ID_CLAIM -> ""))
 
       validateClientAssertion(Some(clientId.toString), assertion, clientAssertionType, grantType)(
@@ -109,6 +109,14 @@ class ClientAssertionValidationSpec extends AnyWordSpecLike {
 
     "fail when kid is an empty string" in {
       val assertion = fastClientAssertionJWT(kid = Some(""))
+
+      validateClientAssertion(clientId.toString.some, assertion, clientAssertionType, grantType)(
+        jwtValidator
+      ) shouldBe Left(NonEmptyList.of(KidNotFound))
+    }
+
+    "fail when kid is aa blank string" in {
+      val assertion = fastClientAssertionJWT(kid = Some(" "))
 
       validateClientAssertion(clientId.toString.some, assertion, clientAssertionType, grantType)(
         jwtValidator
