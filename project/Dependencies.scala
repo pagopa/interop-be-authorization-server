@@ -35,6 +35,7 @@ object Dependencies {
     lazy val queueManager = namespace %% "interop-commons-queue-manager" % commonsVersion
     lazy val rateLimiter  = namespace %% "interop-commons-rate-limiter"  % commonsVersion
     lazy val signer       = namespace %% "interop-commons-signer"        % commonsVersion
+    lazy val file         = namespace %% "interop-commons-file-manager"  % commonsVersion
   }
 
   private[this] object cats {
@@ -106,6 +107,7 @@ object Dependencies {
       pagopa.authorizationManagement % Compile,
       pagopa.rateLimiter             % Compile,
       pagopa.signer                  % Compile,
+      pagopa.file                    % Compile,
       akka.httpTestkit               % Test,
       akka.streamTestkit             % Test,
       akka.testkit                   % Test,

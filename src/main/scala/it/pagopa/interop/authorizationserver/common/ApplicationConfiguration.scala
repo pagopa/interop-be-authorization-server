@@ -25,7 +25,8 @@ object ApplicationConfiguration {
   val clientAssertionAudience: Set[String] =
     config.getString("authorization-server.client-assertion-audience").split(",").toSet.filter(_.nonEmpty)
 
-  val jwtQueueUrl: String = config.getString("authorization-server.jwt-queue-url")
+  val jwtQueueUrl: String           = config.getString("authorization-server.jwt-queue-url")
+  val jwtFallbackBucketPath: String = config.getString("authorization-server.jwt-fallback-bucket")
 
   val rsaKeysIdentifiers: Set[String] =
     config.getString("authorization-server.rsa-keys-identifiers").split(",").toSet.filter(_.nonEmpty)

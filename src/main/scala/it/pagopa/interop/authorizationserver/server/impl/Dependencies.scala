@@ -19,6 +19,7 @@ import it.pagopa.interop.authorizationserver.error.ResponseHandlers.serviceCode
 import it.pagopa.interop.authorizationserver.service._
 import it.pagopa.interop.authorizationserver.service.impl._
 import it.pagopa.interop.clientassertionvalidation.ClientAssertionValidator
+import it.pagopa.interop.commons.files.service.FileManager
 import it.pagopa.interop.commons.jwt._
 import it.pagopa.interop.commons.jwt.service.impl.DefaultInteropTokenGenerator
 import it.pagopa.interop.commons.queue.config.SQSHandlerConfig
@@ -75,7 +76,9 @@ trait Dependencies {
       clientAssertionValidator,
       interopTokenGenerator(blockingEc),
       queueService(blockingEc),
-      rateLimiter
+      FileManager.get(FileManager.S3)(blockingEc),
+      rateLimiter,
+      dateTimeSupplier
     )
 
   def authApi(clientAssertionValidator: ClientAssertionValidator, blockingEc: ExecutionContextExecutor)(implicit
