@@ -5,7 +5,7 @@ import com.nimbusds.jose.crypto.{ECDSASigner, RSASSASigner}
 import com.nimbusds.jose.jwk.{JWK, RSAKey}
 import com.nimbusds.jose.{JWSAlgorithm, JWSHeader}
 import com.nimbusds.jwt.{JWTClaimsSet, SignedJWT}
-import it.pagopa.interop.authorizationmanagement.client.model.{Key, OtherPrimeInfo}
+import it.pagopa.interop.authorizationmanagement.client.model.{JWKKey, OtherPrimeInfo}
 import it.pagopa.interop.clientassertionvalidation.SpecData._
 
 import java.util.{Date, UUID}
@@ -85,7 +85,7 @@ object SpecUtil {
     jwsObject.serialize
   }
 
-  def keyFromRSAKey(kid: String, key: RSAKey): Key = {
+  def keyFromRSAKey(kid: String, key: RSAKey): JWKKey = {
     val otherPrimes = Option(key.getOtherPrimes)
       .map(list =>
         list.asScala
@@ -100,7 +100,7 @@ object SpecUtil {
       )
       .filter(_.nonEmpty)
 
-    Key(
+    JWKKey(
       use = None,
       alg = None,
       kty = key.getKeyType.getValue,
