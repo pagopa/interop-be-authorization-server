@@ -34,7 +34,7 @@ import it.pagopa.interop.commons.ratelimiter.model.{Headers, RateLimitStatus}
 import it.pagopa.interop.commons.utils.AkkaUtils.fastGetOpt
 import it.pagopa.interop.commons.utils.TypeConversions._
 import it.pagopa.interop.commons.utils._
-import it.pagopa.interop.commons.utils.JWTPathGenerator.generateJWTPathInfo
+import it.pagopa.interop.commons.utils.JWTPathGenerator._
 import it.pagopa.interop.commons.files.service.FileManager
 import it.pagopa.interop.commons.utils.service.OffsetDateTimeSupplier
 
@@ -180,15 +180,18 @@ final case class AuthApiServiceImpl(
       .send(jwtDetails)
       .void
       .recoverWith { case sendError =>
-        val (path, filename): (String, String) = generateJWTPathInfo(dateTimeSupplier)
-        val jsonStr: String      = jwtDetails.readableString
-        val content: Array[Byte] = jsonStr.getBytes()
+        val jwtPathInfo: JWTPathInfo = generateJWTPathInfo(dateTimeSupplier)
+        val jsonStr: String          = jwtDetails.readableString
+        val content: Array[Byte]     = jsonStr.getBytes()
 
         logger.error(s"Unable to send JWT to the queue. JWT: $jsonStr", sendError)
-        logger.info(s"Storing JWT to fallback bucket at $jwtFallbackBucketPath/$path/$filename")
+        logger.info(
+          s"Storing JWT to fallback bucket at " +
+            s"$jwtFallbackBucketPath/${jwtPathInfo.path}/${jwtPathInfo.filename}"
+        )
 
         fileManager
-          .storeBytes(jwtFallbackBucketPath, path, filename)(content)
+          .storeBytes(jwtFallbackBucketPath, jwtPathInfo.path, jwtPathInfo.filename)(content)
           .void
           .recoverWith { case storeError =>
             val errorMsg = s"Unable to save JWT details to fallback bucket. JWT: $jsonStr"
