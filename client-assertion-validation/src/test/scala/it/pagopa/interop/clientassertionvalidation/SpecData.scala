@@ -29,7 +29,7 @@ object SpecData {
   val purposeId: UUID          = UUID.randomUUID()
   val clientAssertionAlgorithm = "RS256"
   val clientAssertionAudience  = "test.interop.pagopa.it"
-  val modelKey: Key            = Key(
+  val modelKey: JWKKey         = JWKKey(
     kty = "RSA",
     kid = "NCapnP1ppEJkFXHYFQGtBf6C-_dUU3XfGVyA4-uKaMo",
     x5u = None,
@@ -56,7 +56,7 @@ object SpecData {
   val eServiceAudience      = "e-service-audience"
   val eServiceTokenDuration = 100
 
-  val anotherModelKey: Key = modelKey.copy(n =
+  val anotherModelKey: JWKKey = modelKey.copy(n =
     Some(
       "oWHaq1cUlIUM1kvzJABltbilH_UtVHXVDSyUOLiVNffGpguOGj6ngW6ExYZX-3vnXYZ27LRFBxydA912yG3WsPy412MNdUT0h6yMVkju3212OMsMWIO5b1Sp9jxpQqKtpjvzYM5Bh-mFWjug3WVnwY8rjiWx3XnNudLgjSZxteprvQ4GCAmYCiiq6t2D-_0nwvmi162ySGtLXEzRUEL-AkwzS0UV0uNzvFxqkuAPvEAOmb28yqKgmHQnQwf3t9NsS3pqV1OaHmfQeeWQeVhPOfzAFsZhOH0GqZwPTCP2_Z9zp9HIdfVgUa4yvFfKo48QfePTT8Dy8xM9bhuAu0gdgw"
     )
