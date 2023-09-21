@@ -11,15 +11,10 @@ import it.pagopa.interop.authorizationmanagement.client.model._
 import it.pagopa.interop.authorizationserver.api.AuthApiService
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration.jwtFallbackBucketPath
-import it.pagopa.interop.authorizationserver.error.AuthServerErrors.ClientAssertionValidationWrapper
+import it.pagopa.interop.authorizationserver.error.AuthServerErrors.{ClientAssertionValidationWrapper, StoreTokenBucketError}
 import it.pagopa.interop.authorizationserver.error.ResponseHandlers._
 import it.pagopa.interop.authorizationserver.model.TokenType.Bearer
-import it.pagopa.interop.authorizationserver.model.{
-  ClientAssertionDetails,
-  ClientCredentialsResponse,
-  JWTDetailsMessage,
-  Problem
-}
+import it.pagopa.interop.authorizationserver.model.{ClientAssertionDetails, ClientCredentialsResponse, JWTDetailsMessage, Problem}
 import it.pagopa.interop.authorizationserver.service.{AuthorizationManagementService, QueueService}
 import it.pagopa.interop.clientassertionvalidation.Errors.{PurposeIdNotProvided, PurposeNotFound}
 import it.pagopa.interop.clientassertionvalidation.Validation._
@@ -194,9 +189,8 @@ final case class AuthApiServiceImpl(
           .storeBytes(jwtFallbackBucketPath, jwtPathInfo.path, jwtPathInfo.filename)(content)
           .void
           .recoverWith { case storeError =>
-            val errorMsg = s"Unable to save JWT details to fallback bucket. JWT: $jsonStr"
-            logger.error(errorMsg, storeError)
-            Future.failed(new RuntimeException(errorMsg, storeError))
+            logger.error(s"Unable to save JWT details to fallback bucket. JWT: $jsonStr", storeError)
+            Future.failed(StoreTokenBucketError(jsonStr))
           }
       }
   }
