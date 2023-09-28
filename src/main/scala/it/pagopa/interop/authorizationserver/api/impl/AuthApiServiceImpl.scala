@@ -10,7 +10,11 @@ import com.typesafe.scalalogging.{Logger, LoggerTakingImplicit}
 import it.pagopa.interop.authorizationmanagement.client.model._
 import it.pagopa.interop.authorizationserver.api.AuthApiService
 import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
-import it.pagopa.interop.authorizationserver.error.AuthServerErrors.ClientAssertionValidationWrapper
+import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration.jwtFallbackBucketPath
+import it.pagopa.interop.authorizationserver.error.AuthServerErrors.{
+  ClientAssertionValidationWrapper,
+  StoreTokenBucketError
+}
 import it.pagopa.interop.authorizationserver.error.ResponseHandlers._
 import it.pagopa.interop.authorizationserver.model.TokenType.Bearer
 import it.pagopa.interop.authorizationserver.model.{
@@ -33,6 +37,9 @@ import it.pagopa.interop.commons.ratelimiter.model.{Headers, RateLimitStatus}
 import it.pagopa.interop.commons.utils.AkkaUtils.fastGetOpt
 import it.pagopa.interop.commons.utils.TypeConversions._
 import it.pagopa.interop.commons.utils._
+import it.pagopa.interop.commons.utils.JWTPathGenerator._
+import it.pagopa.interop.commons.files.service.FileManager
+import it.pagopa.interop.commons.utils.service.OffsetDateTimeSupplier
 
 import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
@@ -42,7 +49,9 @@ final case class AuthApiServiceImpl(
   jwtValidator: ClientAssertionValidator,
   interopTokenGenerator: InteropTokenGenerator,
   queueService: QueueService,
-  rateLimiter: RateLimiter
+  fileManager: FileManager,
+  rateLimiter: RateLimiter,
+  dateTimeSupplier: OffsetDateTimeSupplier
 )(implicit blockingEc: ExecutionContext)
     extends AuthApiService {
 
@@ -173,11 +182,25 @@ final case class AuthApiServiceImpl(
     queueService
       .send(jwtDetails)
       .void
-      .recoverWith(ex =>
-        Future.successful(
-          logger.error(s"Unable to save JWT details to queue. Details: ${jwtDetails.readableString}", ex)
+      .recoverWith { case sendError =>
+        val jwtPathInfo: JWTPathInfo = generateJWTPathInfo(dateTimeSupplier)
+        val jsonStr: String          = jwtDetails.readableString
+        val content: Array[Byte]     = jsonStr.getBytes()
+
+        logger.error(s"Unable to send JWT to the queue. JWT: $jsonStr", sendError)
+        logger.info(
+          s"Storing JWT to fallback bucket at " +
+            s"$jwtFallbackBucketPath/${jwtPathInfo.path}/${jwtPathInfo.filename}"
         )
-      )
+
+        fileManager
+          .storeBytes(jwtFallbackBucketPath, jwtPathInfo.path, jwtPathInfo.filename)(content)
+          .void
+          .recoverWith { case storeError =>
+            logger.error(s"Unable to save JWT details to fallback bucket. JWT: $jsonStr", storeError)
+            Future.failed(StoreTokenBucketError(jsonStr))
+          }
+      }
   }
 
   private def log(validation: AssertionValidationResult, client: Option[Client], token: Option[Token], message: String)(

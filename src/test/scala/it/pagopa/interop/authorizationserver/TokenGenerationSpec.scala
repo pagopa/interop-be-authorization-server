@@ -8,7 +8,7 @@ import it.pagopa.interop.authorizationserver.common.ApplicationConfiguration
 import it.pagopa.interop.authorizationserver.error.AuthServerErrors.KeyNotFound
 import it.pagopa.interop.authorizationserver.model.{ClientCredentialsResponse, JWTDetailsMessage, TokenType}
 import it.pagopa.interop.authorizationserver.utils.SpecData._
-import it.pagopa.interop.authorizationserver.utils.{BaseSpec, SpecHelper}
+import it.pagopa.interop.authorizationserver.utils.{BaseSpec, SpecData, SpecHelper}
 import it.pagopa.interop.clientassertionvalidation.SpecData.{
   anotherModelKey,
   clientAssertionType,
@@ -99,6 +99,10 @@ class TokenGenerationSpec extends BaseSpec with SpecHelper with ScalatestRouteTe
         .expects(expectedQueueMessage, *)
         .once()
         .returns(Future.failed(new Throwable()))
+
+      (() => mockDateTimeSupplier.get()).expects().returning(SpecData.timestamp).once()
+
+      mockFileManagerStore("whateverPath")
 
       Get() ~> service.createToken(
         Some(clientId.toString),
