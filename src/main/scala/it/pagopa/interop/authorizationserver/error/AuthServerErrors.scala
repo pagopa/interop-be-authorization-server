@@ -15,7 +15,7 @@ object AuthServerErrors {
       extends ComponentError("0008", s"Unable to generate a token for the given request")
 
   final case class StoreTokenBucketError(jsonStr: String)
-    extends ComponentError("0009", s"Unable to save JWT details to fallback bucket. JWT: $jsonStr")
+      extends ComponentError("0009", s"Unable to save JWT details to fallback bucket. JWT: $jsonStr")
 
   final case class KeyNotFound(clientId: UUID, kid: String)
       extends ComponentError("0011", s"Key $kid not found for Client $clientId")
