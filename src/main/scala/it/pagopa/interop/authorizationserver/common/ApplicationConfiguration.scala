@@ -20,8 +20,6 @@ object ApplicationConfiguration {
   val generatedM2mJwtDuration: Int         =
     config.getInt("authorization-server.generated-jwt.m2m-duration-seconds")
 
-  val signerMaxConnections: Int = config.getInt("authorization-server.signer-max-connections")
-
   val clientAssertionAudience: Set[String] =
     config.getString("authorization-server.client-assertion-audience").split(",").toSet.filter(_.nonEmpty)
 
