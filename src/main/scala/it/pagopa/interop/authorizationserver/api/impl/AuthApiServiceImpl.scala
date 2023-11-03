@@ -111,7 +111,7 @@ final case class AuthApiServiceImpl(
     contexts: Seq[(String, String)]
   ): Future[KeyWithClient] =
     authorizationManagementService
-      .getKeyWithClient(clientId, kid)(contexts.filter(c => List(CORRELATION_ID_HEADER, IP_ADDRESS).contains(c._1)))
+      .getKeyWithClient(clientId, kid)(contexts.filter(c => List(CORRELATION_ID_HEADER).contains(c._1)))
 
   private def generateConsumerToken(client: Client, clientAssertion: ClientAssertion)(implicit
     context: Seq[(String, String)]
