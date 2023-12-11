@@ -94,7 +94,7 @@ object SpecData {
         )
       )
     ),
-    relationships = Set.empty,
+    users = Set.empty,
     createdAt = timestamp,
     kind = kind
   )
