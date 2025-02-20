@@ -154,7 +154,7 @@ final case class AuthApiServiceImpl(
       correlationId = fastGetOpt(contexts)(CORRELATION_ID_HEADER),
       issuedAt = token.iat * 1000,
       clientId = client.id.toString,
-      organizationId = client.consumerId.toString,
+      organizationId = purpose.states.agreement.consumerId.toString,
       agreementId = purpose.states.agreement.agreementId.toString,
       eserviceId = purpose.states.eservice.eserviceId.toString,
       descriptorId = purpose.states.eservice.descriptorId.toString,
